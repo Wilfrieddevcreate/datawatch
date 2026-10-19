@@ -20,6 +20,27 @@ Pour l'accorder sans passer par les réglages pendant le développement :
 adb shell appops set net.alopro.datawatch GET_USAGE_STATS allow
 ```
 
+## Captures d'écran sans téléphone
+
+Les écrans principaux sont rendus avec de fausses données, au format d'un
+téléphone de 360 dp (clair, sombre, texte agrandi) :
+
+```sh
+flutter test tool/screenshots/screens_test.dart --update-goldens
+```
+
+Les images arrivent dans `tool/screenshots/out/` (non versionné). Une erreur
+de mise en page fait échouer la capture concernée.
+
+## Icône
+
+L'icône adaptative est vectorielle (`android/app/src/main/res/drawable/ic_launcher_*.xml`).
+Les PNG de secours et l'icône Play Store (`branding/`) se régénèrent avec :
+
+```sh
+python3 tool/branding/generate_icons.py
+```
+
 ## Organisation
 
 ```

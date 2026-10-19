@@ -87,7 +87,12 @@ class _ReservoirPainter extends CustomPainter {
 
     final fillHeight = size.height * fraction;
     if (fillHeight > 0) {
-      final fillRect = Rect.fromLTWH(0, size.height - fillHeight, size.width, fillHeight);
+      final fillRect = Rect.fromLTWH(
+        0,
+        size.height - fillHeight,
+        size.width,
+        fillHeight,
+      );
       canvas.drawRect(fillRect, Paint()..color = fill);
 
       // Hachures discrètes : la texture distingue le « liquide » du fond.
@@ -97,7 +102,11 @@ class _ReservoirPainter extends CustomPainter {
       canvas.save();
       canvas.clipRect(fillRect);
       for (var x = -size.height; x < size.width + size.height; x += 9) {
-        canvas.drawLine(Offset(x, size.height), Offset(x + size.height, 0), hatch);
+        canvas.drawLine(
+          Offset(x, size.height),
+          Offset(x + size.height, 0),
+          hatch,
+        );
       }
       canvas.restore();
 
@@ -109,10 +118,7 @@ class _ReservoirPainter extends CustomPainter {
 
     for (final m in markers) {
       final y = size.height * m / 100;
-      final isCovered = fillHeight > size.height - y + 6;
-      final lineColor = isCovered ? const Color(0x590F1218) : const Color(0x38FFFFFF);
-      _dashedLine(canvas, Offset(_inset, y), size.width - 2 * _inset, lineColor);
-
+      final isCovered = fillHeight >= size.height - y;
       final label = TextPainter(
         text: TextSpan(
           text: '$m$nbsp%',
@@ -120,7 +126,25 @@ class _ReservoirPainter extends CustomPainter {
         ),
         textDirection: TextDirection.ltr,
       )..layout();
-      label.paint(canvas, Offset(size.width - _inset - label.width, y - 4 - label.height));
+
+      // Étiquette centrée sur le trait, sur une pastille de la couleur de la
+      // zone : elle reste lisible même quand le niveau affleure le seuil.
+      final pill = RRect.fromRectAndRadius(
+        Rect.fromCenter(
+          center: Offset(size.width - _inset - label.width / 2 - 4, y),
+          width: label.width + 8,
+          height: label.height + 2,
+        ),
+        const Radius.circular(4),
+      );
+      _dashedLine(
+        canvas,
+        Offset(_inset, y),
+        pill.left - 3 - _inset,
+        isCovered ? const Color(0x590F1218) : const Color(0x38FFFFFF),
+      );
+      canvas.drawRRect(pill, Paint()..color = isCovered ? fill : tank);
+      label.paint(canvas, Offset(pill.left + 4, y - label.height / 2));
     }
     canvas.restore();
 
@@ -140,11 +164,18 @@ class _ReservoirPainter extends CustomPainter {
     const dash = 4.0;
     const gap = 3.0;
     for (var x = 0.0; x < length; x += dash + gap) {
-      canvas.drawLine(from.translate(x, 0), from.translate((x + dash).clamp(0, length), 0), paint);
+      canvas.drawLine(
+        from.translate(x, 0),
+        from.translate((x + dash).clamp(0, length), 0),
+        paint,
+      );
     }
   }
 
   @override
   bool shouldRepaint(_ReservoirPainter old) =>
-      old.fraction != fraction || old.fill != fill || old.tank != tank || old.covered != covered;
+      old.fraction != fraction ||
+      old.fill != fill ||
+      old.tank != tank ||
+      old.covered != covered;
 }

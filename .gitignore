@@ -43,3 +43,6 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Captures générées par tool/screenshots
+/tool/screenshots/out/

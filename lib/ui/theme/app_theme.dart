@@ -25,7 +25,9 @@ ThemeData buildTheme(Brightness brightness) {
     outlineVariant: c.divider,
   );
 
-  final pill = RoundedRectangleBorder(borderRadius: BorderRadius.circular(DwRadius.pill));
+  final pill = RoundedRectangleBorder(
+    borderRadius: BorderRadius.circular(DwRadius.pill),
+  );
 
   return ThemeData(
     useMaterial3: true,
@@ -48,16 +50,24 @@ ThemeData buildTheme(Brightness brightness) {
       backgroundColor: c.surface,
       surfaceTintColor: Colors.transparent,
       indicatorColor: c.accent,
-      indicatorShape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      indicatorShape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
       labelTextStyle: WidgetStateProperty.resolveWith(
-        (states) => text.labelMedium!.weight(states.contains(WidgetState.selected) ? 600 : 500).copyWith(
-              color: states.contains(WidgetState.selected) ? c.text : c.textSecondary,
+        (states) => text.labelMedium!
+            .weight(states.contains(WidgetState.selected) ? 600 : 500)
+            .copyWith(
+              color: states.contains(WidgetState.selected)
+                  ? c.text
+                  : c.textSecondary,
             ),
       ),
       iconTheme: WidgetStateProperty.resolveWith(
         (states) => IconThemeData(
           size: 22,
-          color: states.contains(WidgetState.selected) ? c.onAccent : c.textSecondary,
+          color: states.contains(WidgetState.selected)
+              ? c.onAccent
+              : c.textSecondary,
         ),
       ),
     ),
@@ -116,7 +126,9 @@ ThemeData buildTheme(Brightness brightness) {
       behavior: SnackBarBehavior.floating,
       backgroundColor: c.strong,
       contentTextStyle: text.bodyLarge!.copyWith(color: c.onStrong),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DwRadius.md)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(DwRadius.md),
+      ),
     ),
     progressIndicatorTheme: ProgressIndicatorThemeData(color: c.text),
   );

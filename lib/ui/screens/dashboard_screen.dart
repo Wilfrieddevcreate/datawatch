@@ -4,16 +4,24 @@ import '../../app/app_controller.dart';
 import '../../app/app_scope.dart';
 import '../../core/format.dart';
 import '../../data/usage_source.dart';
+import '../../domain/data_plan.dart';
 import '../period_text.dart';
 import '../theme/tokens.dart';
 import '../theme/typography.dart';
+import '../widgets/page_header.dart';
 import '../widgets/plan_hero_card.dart';
 import '../widgets/segmented.dart';
 import '../widgets/usage_row.dart';
 
 class DashboardScreen extends StatelessWidget {
-  const DashboardScreen({super.key, required this.onOpenPlan, required this.onOpenApps});
+  const DashboardScreen({
+    super.key,
+    required this.actions,
+    required this.onOpenPlan,
+    required this.onOpenApps,
+  });
 
+  final List<Widget> actions;
   final VoidCallback onOpenPlan;
   final VoidCallback onOpenApps;
 
@@ -24,54 +32,69 @@ class DashboardScreen extends StatelessWidget {
     final t = Theme.of(context).textTheme;
     final isLight = Theme.of(context).brightness == Brightness.light;
     final snapshot = controller.snapshot;
+    final now = snapshot?.fetchedAt ?? controller.now();
     final periods = controller.plan == null
         ? const [UsagePeriod.today, UsagePeriod.week, UsagePeriod.month]
-        : UsagePeriod.values;
+        : const [
+            UsagePeriod.plan,
+            UsagePeriod.today,
+            UsagePeriod.week,
+            UsagePeriod.month,
+          ];
 
-    return RefreshIndicator(
+    return DwPage(
+      title: now.hour >= 5 && now.hour < 18 ? 'Bonjour' : 'Bonsoir',
+      overline: formatLongDate(now),
+      compactTitle: 'Accueil',
+      subtitle: Text(_paceSentence(controller.plan, controller.planUsage, now)),
+      actions: actions,
       onRefresh: controller.refresh,
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-        children: [
-          _Header(onAlerts: onOpenPlan),
-          const SizedBox(height: 16),
-          PlanHeroCard(
-            plan: controller.plan,
-            usage: controller.planUsage,
-            now: snapshot?.fetchedAt ?? controller.now(),
-            onEditPlan: onOpenPlan,
-          ),
-          const SizedBox(height: 28),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Expanded(child: Text('Consommation', style: t.titleLarge)),
-              if (controller.loading)
-                const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-              else if (snapshot != null)
-                Text('Mis à jour à ${formatTime(snapshot.fetchedAt)}', style: t.bodySmall!.copyWith(color: c.textSecondary)),
-            ],
-          ),
-          const SizedBox(height: 12),
-          DwSegmented<UsagePeriod>(
-            values: periods,
-            selected: controller.effectivePeriod,
-            labelOf: (p) => p.label,
-            onChanged: controller.setPeriod,
-          ),
-          if (snapshot != null) ...[
-            const SizedBox(height: 10),
-            Text(
-              periodCaption(snapshot.period, snapshot.range),
-              textAlign: TextAlign.center,
-              style: t.bodySmall!.copyWith(color: c.textSecondary),
-            ),
+      children: [
+        PlanHeroCard(
+          plan: controller.plan,
+          usage: controller.planUsage,
+          now: now,
+          onEditPlan: onOpenPlan,
+        ),
+        const SizedBox(height: 28),
+        Row(
+          children: [
+            Expanded(child: Text('Consommation', style: t.titleLarge)),
+            if (controller.loading)
+              const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            else if (snapshot != null)
+              Text(
+                'Mis à jour à ${formatTime(snapshot.fetchedAt)}',
+                style: t.bodySmall!.copyWith(color: c.textSecondary),
+              ),
           ],
-          const SizedBox(height: 12),
-          if (controller.error != null && snapshot == null)
-            _ErrorCard(onRetry: controller.refresh)
-          else ...[
-            Row(
+        ),
+        const SizedBox(height: 12),
+        DwSegmented<UsagePeriod>(
+          values: periods,
+          selected: controller.effectivePeriod,
+          labelOf: (p) => p.label,
+          onChanged: controller.setPeriod,
+        ),
+        if (snapshot != null) ...[
+          const SizedBox(height: 10),
+          Text(
+            periodCaption(snapshot.period, snapshot.range),
+            textAlign: TextAlign.center,
+            style: t.bodySmall!.copyWith(color: c.textSecondary),
+          ),
+        ],
+        const SizedBox(height: 12),
+        if (controller.error != null && snapshot == null)
+          _ErrorCard(onRetry: controller.refresh)
+        else ...[
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Expanded(
                   child: _StatTile(
@@ -81,7 +104,9 @@ class DashboardScreen extends StatelessWidget {
                     label: 'Mobile',
                     bytes: snapshot?.totals.mobileBytes,
                     loading: snapshot == null,
-                    caption: controller.plan == null ? 'Données mobiles' : 'Compté dans le forfait',
+                    caption: controller.plan == null
+                        ? 'Données mobiles'
+                        : 'Dans le forfait',
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -98,51 +123,40 @@ class DashboardScreen extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 12),
-            _TopApps(apps: snapshot?.mobileApps, source: controller.source, onSeeAll: onOpenApps),
-          ],
+          ),
+          const SizedBox(height: 12),
+          _TopApps(
+            apps: snapshot?.mobileApps,
+            source: controller.source,
+            onSeeAll: onOpenApps,
+          ),
         ],
-      ),
+      ],
     );
   }
-}
 
-class _Header extends StatelessWidget {
-  const _Header({required this.onAlerts});
-  final VoidCallback onAlerts;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.dw;
-    return SizedBox(
-      height: 48,
-      child: Row(
-        children: [
-          ExcludeSemantics(
-            child: Container(
-              width: 18,
-              height: 26,
-              padding: const EdgeInsets.all(3),
-              alignment: Alignment.bottomCenter,
-              decoration: BoxDecoration(color: c.strong, borderRadius: BorderRadius.circular(6)),
-              child: Container(
-                height: 9,
-                decoration: BoxDecoration(color: c.accent, borderRadius: BorderRadius.circular(3)),
-              ),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Text('DataWatch', style: DwFonts.style(DwFonts.display, 21, 700, letterSpacing: -0.4)),
-          const Spacer(),
-          IconButton(
-            onPressed: onAlerts,
-            tooltip: 'Seuils d’alerte',
-            style: IconButton.styleFrom(backgroundColor: c.surface, fixedSize: const Size(44, 44)),
-            icon: Icon(Icons.notifications_none_rounded, color: c.text, size: 21),
-          ),
-        ],
-      ),
-    );
+  /// Phrase d'en-tête : ce que le rythme actuel annonce pour le forfait.
+  static String _paceSentence(DataPlan? plan, PlanUsage? usage, DateTime now) {
+    if (plan == null) {
+      return 'Déclarez votre forfait pour savoir combien de temps il va tenir.';
+    }
+    if (plan.isExpired(now)) {
+      return 'Votre forfait a expiré le ${formatDayMonth(plan.end)}. Après une recharge, démarrez un nouveau suivi.';
+    }
+    if (usage == null) {
+      return 'Forfait ${plan.operator.label} suivi jusqu’au ${formatDayMonthTime(plan.end)}.';
+    }
+    if (usage.level == UsageLevel.exhausted) {
+      return 'Le volume déclaré est épuisé, selon la mesure de ce téléphone.';
+    }
+    return switch (projectPace(plan, usage, now)) {
+      PaceUnknown() =>
+        'Votre rythme de consommation s’affichera d’ici quelques heures.',
+      PaceLastsUntilEnd() =>
+        'À ce rythme, votre forfait tiendra jusqu’à son expiration.',
+      PaceRunsOut(:final at) =>
+        'À ce rythme, il sera épuisé le ${formatDayMonth(at)} ${formatPartOfDay(at)}, avant son expiration.',
+    };
   }
 }
 
@@ -173,7 +187,8 @@ class _StatTile extends StatelessWidget {
     return DwCard(
       radius: DwRadius.lg,
       child: Semantics(
-        label: '$label : ${bytes == null ? 'mesure indisponible' : value}',
+        label:
+            '$label : ${!loading && bytes == null ? 'mesure indisponible' : value}',
         excludeSemantics: true,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -183,20 +198,30 @@ class _StatTile extends StatelessWidget {
                 Container(
                   width: 30,
                   height: 30,
-                  decoration: BoxDecoration(color: iconBackground, shape: BoxShape.circle),
+                  decoration: BoxDecoration(
+                    color: iconBackground,
+                    shape: BoxShape.circle,
+                  ),
                   child: Icon(icon, size: 16, color: iconForeground),
                 ),
                 const SizedBox(width: 8),
                 Text(label, style: t.titleSmall),
               ],
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             FittedBox(
               fit: BoxFit.scaleDown,
               alignment: Alignment.centerLeft,
               child: Text(
                 value,
-                style: DwFonts.style(DwFonts.display, 30, 650, height: 1, letterSpacing: -0.9, tabular: true),
+                style: DwFonts.style(
+                  DwFonts.display,
+                  30,
+                  650,
+                  height: 1,
+                  letterSpacing: -0.9,
+                  tabular: true,
+                ),
               ),
             ),
             const SizedBox(height: 10),
@@ -212,7 +237,11 @@ class _StatTile extends StatelessWidget {
 }
 
 class _TopApps extends StatelessWidget {
-  const _TopApps({required this.apps, required this.source, required this.onSeeAll});
+  const _TopApps({
+    required this.apps,
+    required this.source,
+    required this.onSeeAll,
+  });
 
   final List<AppUsage>? apps;
   final UsageSource source;
@@ -236,13 +265,21 @@ class _TopApps extends StatelessWidget {
             height: 48,
             child: Row(
               children: [
-                Expanded(child: Text('Les plus gourmandes', style: t.titleMedium)),
+                Expanded(
+                  child: Text('Les plus gourmandes', style: t.titleMedium),
+                ),
                 TextButton(
                   onPressed: onSeeAll,
-                  style: TextButton.styleFrom(foregroundColor: c.wifi, padding: const EdgeInsets.only(left: 8)),
+                  style: TextButton.styleFrom(
+                    foregroundColor: c.wifi,
+                    padding: const EdgeInsets.only(left: 8),
+                  ),
                   child: const Row(
                     mainAxisSize: MainAxisSize.min,
-                    children: [Text('Tout voir'), Icon(Icons.chevron_right_rounded, size: 20)],
+                    children: [
+                      Text('Tout voir'),
+                      Icon(Icons.chevron_right_rounded, size: 20),
+                    ],
                   ),
                 ),
               ],

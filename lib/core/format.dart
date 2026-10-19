@@ -14,19 +14,20 @@ class SizeParts {
   String toString() => '$value$nbsp$unit';
 }
 
-/// Formate un volume en restant lisible : 2 décimales sous 10 Go, 1 au-delà,
-/// Mo entiers sous 1 Go.
+/// Formate un volume en restant lisible : jusqu'à 2 décimales sous 10 Go,
+/// 1 au-delà, Mo entiers sous 1 Go. Les zéros inutiles disparaissent (5 Go).
 SizeParts sizeParts(int bytes) {
   final b = bytes < 0 ? 0 : bytes;
+  if (b == 0) return const SizeParts('0', 'Mo');
   final go = b / DataUnits.bytesPerGo;
-  if (go >= 10) return SizeParts(_decimal(go, 1), 'Go');
-  if (go >= 1) return SizeParts(_decimal(go, 2), 'Go');
+  if (go >= 10) return SizeParts(formatNumber(go, maxDecimals: 1), 'Go');
+  if (go >= 1) return SizeParts(formatNumber(go), 'Go');
 
   final mo = b / DataUnits.bytesPerMo;
   if (mo >= 1) {
     final rounded = mo.round();
     return rounded >= DataUnits.base
-        ? SizeParts(_decimal(1, 2), 'Go')
+        ? const SizeParts('1', 'Go')
         : SizeParts('$rounded', 'Mo');
   }
 
@@ -52,23 +53,62 @@ String formatShare(double fraction) {
 String formatNumber(num value, {int maxDecimals = 2}) {
   var text = value.toStringAsFixed(maxDecimals);
   if (text.contains('.')) {
-    text = text.replaceFirst(RegExp(r'0+$'), '').replaceFirst(RegExp(r'\.$'), '');
+    text = text
+        .replaceFirst(RegExp(r'0+$'), '')
+        .replaceFirst(RegExp(r'\.$'), '');
   }
   return text.replaceAll('.', ',');
 }
 
 /// Entier avec séparateur de milliers : 5 120.
-String formatThousands(int value) => value
-    .toString()
-    .replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (_) => nbsp);
-
-String _decimal(double value, int digits) =>
-    value.toStringAsFixed(digits).replaceAll('.', ',');
+String formatThousands(int value) => value.toString().replaceAllMapped(
+  RegExp(r'\B(?=(\d{3})+(?!\d))'),
+  (_) => nbsp,
+);
 
 const List<String> _months = [
-  'janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin',
-  'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.',
+  'janv.',
+  'févr.',
+  'mars',
+  'avr.',
+  'mai',
+  'juin',
+  'juil.',
+  'août',
+  'sept.',
+  'oct.',
+  'nov.',
+  'déc.',
 ];
+
+const List<String> _monthsLong = [
+  'janvier',
+  'février',
+  'mars',
+  'avril',
+  'mai',
+  'juin',
+  'juillet',
+  'août',
+  'septembre',
+  'octobre',
+  'novembre',
+  'décembre',
+];
+
+const List<String> _weekdays = [
+  'lundi',
+  'mardi',
+  'mercredi',
+  'jeudi',
+  'vendredi',
+  'samedi',
+  'dimanche',
+];
+
+/// « lundi 19 octobre »
+String formatLongDate(DateTime d) =>
+    '${_weekdays[d.weekday - 1]} ${formatDayNumber(d)} ${_monthsLong[d.month - 1]}';
 
 String _two(int n) => n.toString().padLeft(2, '0');
 
@@ -76,7 +116,8 @@ String _two(int n) => n.toString().padLeft(2, '0');
 String formatDayNumber(DateTime d) => d.day == 1 ? '1er' : '${d.day}';
 
 /// « 22 oct. »
-String formatDayMonth(DateTime d) => '${formatDayNumber(d)} ${_months[d.month - 1]}';
+String formatDayMonth(DateTime d) =>
+    '${formatDayNumber(d)} ${_months[d.month - 1]}';
 
 /// « 22 oct. 2026 »
 String formatDate(DateTime d) => '${formatDayMonth(d)} ${d.year}';
@@ -84,8 +125,18 @@ String formatDate(DateTime d) => '${formatDayMonth(d)} ${d.year}';
 /// « 08:30 »
 String formatTime(DateTime d) => '${_two(d.hour)}:${_two(d.minute)}';
 
+/// Moment de la journée, pour une projection qui n'a pas de sens à la minute
+/// près : « au matin », « dans l'après-midi »…
+String formatPartOfDay(DateTime d) => switch (d.hour) {
+  >= 5 && < 12 => 'au matin',
+  >= 12 && < 18 => 'dans l’après-midi',
+  >= 18 && < 23 => 'dans la soirée',
+  _ => 'dans la nuit',
+};
+
 /// « 22 oct. à 08:30 »
-String formatDayMonthTime(DateTime d) => '${formatDayMonth(d)} à ${formatTime(d)}';
+String formatDayMonthTime(DateTime d) =>
+    '${formatDayMonth(d)} à ${formatTime(d)}';
 
 /// Durée courte pour un compte à rebours : « 2 j 18 h », « 5 h 12 min », « 12 min ».
 String formatRemaining(Duration d) {

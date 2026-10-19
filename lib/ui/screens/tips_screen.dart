@@ -4,10 +4,13 @@ import '../../app/app_scope.dart';
 import '../../domain/tips.dart';
 import '../theme/tokens.dart';
 import '../theme/typography.dart';
+import '../widgets/page_header.dart';
 import '../widgets/usage_row.dart';
 
 class TipsScreen extends StatefulWidget {
-  const TipsScreen({super.key});
+  const TipsScreen({super.key, required this.actions});
+
+  final List<Widget> actions;
 
   @override
   State<TipsScreen> createState() => _TipsScreenState();
@@ -18,21 +21,25 @@ class _TipsScreenState extends State<TipsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.dw;
-    final t = Theme.of(context).textTheme;
     final apps = AppScope.of(context).snapshot?.mobileApps;
     final focus = apps == null ? null : focusFor(apps);
-    final tips = allTips.where((tip) => _filter == null || tip.category == _filter).toList();
+    final tips = allTips
+        .where((tip) => _filter == null || tip.category == _filter)
+        .toList();
 
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+    return DwPage(
+      title: 'Conseils',
+      overline: 'Selon votre consommation',
+      subtitle: const Text(
+        'Des gestes simples pour faire durer votre forfait.',
+      ),
+      actions: widget.actions,
       children: [
-        Text('Conseils', style: t.headlineMedium),
-        const SizedBox(height: 2),
-        Text('Choisis d’après votre consommation mesurée.', style: t.bodyMedium!.copyWith(color: c.textSecondary)),
-        const SizedBox(height: 16),
         if (focus != null) ...[
-          _FocusCard(focus: focus, onShow: () => setState(() => _filter = focus.category)),
+          _FocusCard(
+            focus: focus,
+            onShow: () => setState(() => _filter = focus.category),
+          ),
           const SizedBox(height: 16),
         ],
         SingleChildScrollView(
@@ -40,10 +47,18 @@ class _TipsScreenState extends State<TipsScreen> {
           clipBehavior: Clip.none,
           child: Row(
             children: [
-              _FilterChip(label: 'Tous', selected: _filter == null, onTap: () => setState(() => _filter = null)),
+              _FilterChip(
+                label: 'Tous',
+                selected: _filter == null,
+                onTap: () => setState(() => _filter = null),
+              ),
               for (final cat in TipCategory.values) ...[
                 const SizedBox(width: 8),
-                _FilterChip(label: cat.label, selected: _filter == cat, onTap: () => setState(() => _filter = cat)),
+                _FilterChip(
+                  label: cat.label,
+                  selected: _filter == cat,
+                  onTap: () => setState(() => _filter = cat),
+                ),
               ],
             ],
           ),
@@ -79,7 +94,13 @@ class _FocusCard extends StatelessWidget {
           const SizedBox(height: 10),
           Text(
             focus.headline,
-            style: DwFonts.style(DwFonts.display, 27, 700, height: 1.08, letterSpacing: -0.8).copyWith(color: ink),
+            style: DwFonts.style(
+              DwFonts.display,
+              27,
+              700,
+              height: 1.08,
+              letterSpacing: -0.8,
+            ).copyWith(color: ink),
           ),
           const SizedBox(height: 14),
           Semantics(
@@ -93,7 +114,9 @@ class _FocusCard extends StatelessWidget {
                     height: 10,
                     decoration: const BoxDecoration(
                       color: ink,
-                      borderRadius: BorderRadius.horizontal(left: Radius.circular(4)),
+                      borderRadius: BorderRadius.horizontal(
+                        left: Radius.circular(4),
+                      ),
                     ),
                   ),
                 ),
@@ -104,7 +127,9 @@ class _FocusCard extends StatelessWidget {
                     height: 10,
                     decoration: const BoxDecoration(
                       color: Color(0x240F1218),
-                      borderRadius: BorderRadius.horizontal(right: Radius.circular(4)),
+                      borderRadius: BorderRadius.horizontal(
+                        right: Radius.circular(4),
+                      ),
                     ),
                   ),
                 ),
@@ -112,7 +137,10 @@ class _FocusCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-          Text(focus.detail, style: t.bodyMedium!.copyWith(color: const Color(0xFF26300A))),
+          Text(
+            focus.detail,
+            style: t.bodyMedium!.copyWith(color: const Color(0xFF26300A)),
+          ),
           const SizedBox(height: 14),
           FilledButton.icon(
             onPressed: onShow,
@@ -123,8 +151,15 @@ class _FocusCard extends StatelessWidget {
               minimumSize: const Size(44, 48),
               padding: const EdgeInsets.symmetric(horizontal: 20),
             ),
-            icon: const Icon(Icons.chevron_right_rounded, color: DwColors.tankOk),
-            label: Text(focus.category == null ? 'Voir tous les conseils' : 'Voir les conseils ${focus.category!.label.toLowerCase()}'),
+            icon: const Icon(
+              Icons.chevron_right_rounded,
+              color: DwColors.tankOk,
+            ),
+            label: Text(
+              focus.category == null
+                  ? 'Voir tous les conseils'
+                  : 'Voir les conseils ${focus.category!.label.toLowerCase()}',
+            ),
           ),
         ],
       ),
@@ -133,7 +168,11 @@ class _FocusCard extends StatelessWidget {
 }
 
 class _FilterChip extends StatelessWidget {
-  const _FilterChip({required this.label, required this.selected, required this.onTap});
+  const _FilterChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
 
   final String label;
   final bool selected;
@@ -147,7 +186,9 @@ class _FilterChip extends StatelessWidget {
       selected: selected,
       child: Material(
         color: selected ? c.strong : c.surface,
-        shape: StadiumBorder(side: BorderSide(color: selected ? c.strong : c.divider)),
+        shape: StadiumBorder(
+          side: BorderSide(color: selected ? c.strong : c.divider),
+        ),
         child: InkWell(
           onTap: onTap,
           customBorder: const StadiumBorder(),
@@ -157,7 +198,9 @@ class _FilterChip extends StatelessWidget {
             alignment: Alignment.center,
             child: Text(
               label,
-              style: Theme.of(context).textTheme.titleSmall!.copyWith(color: selected ? c.onStrong : c.text),
+              style: Theme.of(context).textTheme.titleSmall!.copyWith(
+                color: selected ? c.onStrong : c.text,
+              ),
             ),
           ),
         ),
@@ -175,10 +218,22 @@ class _TipCard extends StatelessWidget {
     final c = context.dw;
     final t = Theme.of(context).textTheme;
     final (icon, bg, fg) = switch (tip.category) {
-      TipCategory.video => (Icons.play_circle_outline_rounded, c.warningSoft, c.warningText),
-      TipCategory.messaging => (Icons.chat_bubble_outline_rounded, c.positiveSoft, c.positiveText),
+      TipCategory.video => (
+        Icons.play_circle_outline_rounded,
+        c.warningSoft,
+        c.warningText,
+      ),
+      TipCategory.messaging => (
+        Icons.chat_bubble_outline_rounded,
+        c.positiveSoft,
+        c.positiveText,
+      ),
       TipCategory.updates => (Icons.download_rounded, c.wifiSoft, c.wifi),
-      TipCategory.background => (Icons.smartphone_rounded, c.track, c.textSecondary),
+      TipCategory.background => (
+        Icons.smartphone_rounded,
+        c.track,
+        c.textSecondary,
+      ),
     };
     return DwCard(
       radius: DwRadius.lg,
@@ -188,7 +243,10 @@ class _TipCard extends StatelessWidget {
           Container(
             width: 44,
             height: 44,
-            decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(DwRadius.md)),
+            decoration: BoxDecoration(
+              color: bg,
+              borderRadius: BorderRadius.circular(DwRadius.md),
+            ),
             child: Icon(icon, size: 20, color: fg),
           ),
           const SizedBox(width: 14),
@@ -198,10 +256,16 @@ class _TipCard extends StatelessWidget {
               children: [
                 Text(tip.title, style: t.titleMedium!.copyWith(fontSize: 16)),
                 const SizedBox(height: 4),
-                Text(tip.body, style: t.bodyMedium!.copyWith(color: c.textSecondary)),
+                Text(
+                  tip.body,
+                  style: t.bodyMedium!.copyWith(color: c.textSecondary),
+                ),
                 const SizedBox(height: 10),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: tip.highImpact ? c.strong : c.track,
                     borderRadius: BorderRadius.circular(DwRadius.pill),
@@ -209,7 +273,11 @@ class _TipCard extends StatelessWidget {
                   child: Text(
                     tip.highImpact ? 'Impact élevé' : 'Impact moyen',
                     style: DwFonts.style(DwFonts.body, 12, 600).copyWith(
-                      color: tip.highImpact ? (Theme.of(context).brightness == Brightness.light ? c.accent : c.onStrong) : c.textSecondary,
+                      color: tip.highImpact
+                          ? (Theme.of(context).brightness == Brightness.light
+                                ? c.accent
+                                : c.onStrong)
+                          : c.textSecondary,
                     ),
                   ),
                 ),

@@ -91,7 +91,10 @@ class _Segment extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.dw;
     final fg = selected
-        ? (ThemeData.estimateBrightnessForColor(selectedColor) == Brightness.dark ? Colors.white : c.onAccent)
+        ? (ThemeData.estimateBrightnessForColor(selectedColor) ==
+                  Brightness.dark
+              ? Colors.white
+              : c.onAccent)
         : c.textSecondary;
     return Semantics(
       button: true,
@@ -105,7 +108,7 @@ class _Segment extends StatelessWidget {
           child: ConstrainedBox(
             constraints: BoxConstraints(minHeight: height, minWidth: 52),
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 8),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -114,12 +117,19 @@ class _Segment extends StatelessWidget {
                     Icon(icon, size: 16, color: fg),
                     const SizedBox(width: 8),
                   ],
+                  // Un libellé trop long rétrécit plutôt que d'être tronqué.
                   Flexible(
-                    child: Text(
-                      label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: DwFonts.style(DwFonts.body, fontSize, selected ? 600 : 500).copyWith(color: fg),
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        label,
+                        maxLines: 1,
+                        style: DwFonts.style(
+                          DwFonts.body,
+                          fontSize,
+                          selected ? 600 : 500,
+                        ).copyWith(color: fg),
+                      ),
                     ),
                   ),
                 ],

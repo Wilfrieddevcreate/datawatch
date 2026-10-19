@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
 import '../ui/screens/home_shell.dart';
@@ -24,7 +25,9 @@ class _DataWatchAppState extends State<DataWatchApp> {
   void initState() {
     super.initState();
     // Au retour des paramètres Android, l'accès a pu changer.
-    _lifecycle = AppLifecycleListener(onResume: widget.controller.recheckAccess);
+    _lifecycle = AppLifecycleListener(
+      onResume: widget.controller.recheckAccess,
+    );
     widget.controller.init();
   }
 
@@ -46,10 +49,31 @@ class _DataWatchAppState extends State<DataWatchApp> {
         locale: const Locale('fr'),
         supportedLocales: const [Locale('fr')],
         localizationsDelegates: GlobalMaterialLocalizations.delegates,
+        builder: (context, child) => AnnotatedRegion<SystemUiOverlayStyle>(
+          value: _systemBars(Theme.of(context)),
+          child: child!,
+        ),
         home: const _RootGate(),
       ),
     );
   }
+}
+
+/// Barre d'état transparente (le contenu passe dessous), barre de navigation
+/// système de la couleur de la barre d'onglets.
+SystemUiOverlayStyle _systemBars(ThemeData theme) {
+  final light = theme.brightness == Brightness.light;
+  final c = theme.extension<DwColors>()!;
+  return SystemUiOverlayStyle(
+    statusBarColor: Colors.transparent,
+    statusBarIconBrightness: light ? Brightness.dark : Brightness.light,
+    statusBarBrightness: theme.brightness,
+    systemNavigationBarColor: c.surface,
+    systemNavigationBarIconBrightness: light
+        ? Brightness.dark
+        : Brightness.light,
+    systemNavigationBarDividerColor: Colors.transparent,
+  );
 }
 
 class _RootGate extends StatelessWidget {
@@ -61,8 +85,14 @@ class _RootGate extends StatelessWidget {
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 250),
       child: switch (controller.access) {
-        AccessState.unknown => ColoredBox(key: const ValueKey('splash'), color: context.dw.background, child: const SizedBox.expand()),
-        AccessState.denied => const OnboardingScreen(key: ValueKey('onboarding')),
+        AccessState.unknown => ColoredBox(
+          key: const ValueKey('splash'),
+          color: context.dw.background,
+          child: const SizedBox.expand(),
+        ),
+        AccessState.denied => const OnboardingScreen(
+          key: ValueKey('onboarding'),
+        ),
         AccessState.granted => const HomeShell(key: ValueKey('home')),
       },
     );

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Logo de l'écran de démarrage avant Android 12 : l'icône dans son carré arrondi. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="96dp"
+    android:height="96dp"
+    android:viewportWidth="72"
+    android:viewportHeight="72">
+    <group android:translateX="-18" android:translateY="-18">
+        <path
+            android:fillColor="#10131A"
+            android:pathData="M34,18 H74 A16,16 0 0 1 90,34 V74 A16,16 0 0 1 74,90 H34 A16,16 0 0 1 18,74 V34 A16,16 0 0 1 34,18 Z" />
+        <path
+            android:fillColor="#2A303C"
+            android:pathData="M49,28 H59 A10,10 0 0 1 69,38 V70 A10,10 0 0 1 59,80 H49 A10,10 0 0 1 39,70 V38 A10,10 0 0 1 49,28 Z" />
+        <path
+            android:fillColor="#C6F135"
+            android:pathData="M45.5,52 H62.5 A2.5,2.5 0 0 1 65,54.5 V70 A6,6 0 0 1 59,76 H49 A6,6 0 0 1 43,70 V54.5 A2.5,2.5 0 0 1 45.5,52 Z" />
+        <path
+            android:fillColor="#FFFFFF"
+            android:fillAlpha="0.55"
+            android:pathData="M45,52 H63 V53.4 H45 Z" />
+    </group>
+</vector>

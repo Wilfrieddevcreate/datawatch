@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Le réservoir DataWatch, sur la grille 108 dp des icônes adaptatives.
+     Tout le dessin tient dans la zone sûre (cercle de 66 dp au centre). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Cuve -->
+    <path
+        android:fillColor="#2A303C"
+        android:pathData="M49,28 H59 A10,10 0 0 1 69,38 V70 A10,10 0 0 1 59,80 H49 A10,10 0 0 1 39,70 V38 A10,10 0 0 1 49,28 Z" />
+    <!-- Niveau restant -->
+    <path
+        android:fillColor="#C6F135"
+        android:pathData="M45.5,52 H62.5 A2.5,2.5 0 0 1 65,54.5 V70 A6,6 0 0 1 59,76 H49 A6,6 0 0 1 43,70 V54.5 A2.5,2.5 0 0 1 45.5,52 Z" />
+    <!-- Reflet à la surface -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:fillAlpha="0.55"
+        android:pathData="M45,52 H63 V53.4 H45 Z" />
+</vector>

@@ -132,7 +132,8 @@ class DwColors extends ThemeExtension<DwColors> {
   DwColors copyWith() => this;
 
   @override
-  DwColors lerp(DwColors? other, double t) => other == null || t < 0.5 ? this : other;
+  DwColors lerp(DwColors? other, double t) =>
+      other == null || t < 0.5 ? this : other;
 }
 
 extension DwThemeContext on BuildContext {

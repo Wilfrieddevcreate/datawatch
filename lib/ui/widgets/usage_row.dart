@@ -10,7 +10,12 @@ import '../theme/typography.dart';
 /// Icône d'application lue sur le téléphone, ou pictogramme pour les
 /// regroupements Android (système, partage de connexion…).
 class UsageOwnerIcon extends StatefulWidget {
-  const UsageOwnerIcon({super.key, required this.usage, required this.source, this.size = 40});
+  const UsageOwnerIcon({
+    super.key,
+    required this.usage,
+    required this.source,
+    this.size = 40,
+  });
 
   final AppUsage usage;
   final UsageSource source;
@@ -43,7 +48,10 @@ class _UsageOwnerIconState extends State<UsageOwnerIcon> {
       _icon = null;
       return;
     }
-    _icon = _cache.putIfAbsent(pkg, () => widget.source.appIcon(pkg, size: 128).catchError((_) => null));
+    _icon = _cache.putIfAbsent(
+      pkg,
+      () => widget.source.appIcon(pkg, size: 128).catchError((_) => null),
+    );
   }
 
   @override
@@ -60,7 +68,9 @@ class _UsageOwnerIconState extends State<UsageOwnerIcon> {
       child: Icon(
         _glyph(widget.usage.owner),
         size: widget.size * 0.5,
-        color: widget.usage.owner == UsageOwner.tethering ? c.accent : c.textSecondary,
+        color: widget.usage.owner == UsageOwner.tethering
+            ? c.accent
+            : c.textSecondary,
       ),
     );
     if (_icon == null) return ExcludeSemantics(child: fallback);
@@ -72,7 +82,12 @@ class _UsageOwnerIconState extends State<UsageOwnerIcon> {
           if (bytes == null) return fallback;
           return ClipRRect(
             borderRadius: radius,
-            child: Image.memory(bytes, width: widget.size, height: widget.size, gaplessPlayback: true),
+            child: Image.memory(
+              bytes,
+              width: widget.size,
+              height: widget.size,
+              gaplessPlayback: true,
+            ),
           );
         },
       ),
@@ -80,12 +95,12 @@ class _UsageOwnerIconState extends State<UsageOwnerIcon> {
   }
 
   static IconData _glyph(UsageOwner owner) => switch (owner) {
-        UsageOwner.app => Icons.android_rounded,
-        UsageOwner.system => Icons.memory_rounded,
-        UsageOwner.removed => Icons.inventory_2_outlined,
-        UsageOwner.tethering => Icons.wifi_tethering_rounded,
-        UsageOwner.hidden => Icons.extension_outlined,
-      };
+    UsageOwner.app => Icons.android_rounded,
+    UsageOwner.system => Icons.memory_rounded,
+    UsageOwner.removed => Icons.inventory_2_outlined,
+    UsageOwner.tethering => Icons.wifi_tethering_rounded,
+    UsageOwner.hidden => Icons.extension_outlined,
+  };
 }
 
 /// Ligne « application · barre · volume · part ».
@@ -122,7 +137,8 @@ class UsageRow extends StatelessWidget {
     final c = context.dw;
     final t = Theme.of(context).textTheme;
     return Semantics(
-      label: '${usage.displayName} : ${formatBytes(usage.bytes)}, ${formatShare(share)} du total',
+      label:
+          '${usage.displayName} : ${formatBytes(usage.bytes)}, ${formatShare(share)} du total',
       button: onTap != null,
       excludeSemantics: true,
       child: InkWell(
@@ -130,7 +146,9 @@ class UsageRow extends StatelessWidget {
         child: Container(
           height: height,
           decoration: BoxDecoration(
-            border: showDivider ? Border(top: BorderSide(color: c.divider)) : null,
+            border: showDivider
+                ? Border(top: BorderSide(color: c.divider))
+                : null,
           ),
           child: Row(
             children: [
@@ -141,7 +159,12 @@ class UsageRow extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(usage.displayName, maxLines: 1, overflow: TextOverflow.ellipsis, style: t.bodyLarge!.weight(500)),
+                    Text(
+                      usage.displayName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: t.bodyLarge!.weight(500),
+                    ),
                     const SizedBox(height: 7),
                     ClipRRect(
                       borderRadius: BorderRadius.circular(3),
@@ -173,10 +196,17 @@ class UsageRow extends StatelessWidget {
                   children: [
                     Text(
                       formatBytes(usage.bytes),
-                      style: t.bodyLarge!.weight(600).copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
+                      style: t.bodyLarge!
+                          .weight(600)
+                          .copyWith(
+                            fontFeatures: const [FontFeature.tabularFigures()],
+                          ),
                     ),
                     const SizedBox(height: 2),
-                    Text(formatShare(share), style: t.bodySmall!.copyWith(color: c.textSecondary)),
+                    Text(
+                      formatShare(share),
+                      style: t.bodySmall!.copyWith(color: c.textSecondary),
+                    ),
                   ],
                 ),
               ),
@@ -190,7 +220,13 @@ class UsageRow extends StatelessWidget {
 
 /// Carte blanche arrondie de la maquette.
 class DwCard extends StatelessWidget {
-  const DwCard({super.key, required this.child, this.padding = const EdgeInsets.all(16), this.color, this.radius = 24});
+  const DwCard({
+    super.key,
+    required this.child,
+    this.padding = const EdgeInsets.all(16),
+    this.color,
+    this.radius = 24,
+  });
 
   final Widget child;
   final EdgeInsetsGeometry padding;
@@ -217,6 +253,8 @@ class DwOverline extends StatelessWidget {
   final Color? color;
 
   @override
-  Widget build(BuildContext context) =>
-      Text(text.toUpperCase(), style: DwFonts.overline(color ?? context.dw.textSecondary));
+  Widget build(BuildContext context) => Text(
+    text.toUpperCase(),
+    style: DwFonts.overline(color ?? context.dw.textSecondary),
+  );
 }

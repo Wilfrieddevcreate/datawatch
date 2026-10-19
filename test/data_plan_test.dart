@@ -10,11 +10,11 @@ const go = DataUnits.bytesPerGo;
 const mo = DataUnits.bytesPerMo;
 
 DataPlan plan({int volume = 5 * go}) => DataPlan(
-      operator: Operator.mtn,
-      volumeBytes: volume,
-      start: DateTime(2026, 10, 15, 8, 30),
-      end: DateTime(2026, 10, 22, 8, 30),
-    );
+  operator: Operator.mtn,
+  volumeBytes: volume,
+  start: DateTime(2026, 10, 15, 8, 30),
+  end: DateTime(2026, 10, 22, 8, 30),
+);
 
 void main() {
   group('PlanUsage', () {
@@ -47,7 +47,11 @@ void main() {
 
   group('DataPlan', () {
     test('aller-retour JSON', () {
-      final p = plan().copyWith(operator: Operator.moov, thresholds: {80}, recurring: true);
+      final p = plan().copyWith(
+        operator: Operator.moov,
+        thresholds: {80},
+        recurring: true,
+      );
       final back = DataPlan.fromJson(p.toJson());
       expect(back.operator, Operator.moov);
       expect(back.volumeBytes, p.volumeBytes);
@@ -67,6 +71,31 @@ void main() {
     test('nouveau suivi : même durée de validité', () {
       final restarted = plan().restartedAt(DateTime(2026, 10, 22, 9));
       expect(restarted.end, DateTime(2026, 10, 29, 9));
+    });
+  });
+
+  group('rythme de consommation', () {
+    final p = plan(); // du 15 oct. 08:30 au 22 oct. 08:30, 5 Go
+
+    test('trop tôt pour conclure', () {
+      expect(
+        projectPace(p, p.usage(go), DateTime(2026, 10, 15, 10)),
+        isA<PaceUnknown>(),
+      );
+    });
+
+    test('3,62 Go en 4 jours : épuisé avant la fin', () {
+      final now = DateTime(2026, 10, 19, 8, 30);
+      final pace = projectPace(p, p.usage((3.62 * go).round()), now);
+      expect(pace, isA<PaceRunsOut>());
+      // 0,905 Go/jour → 1,38 Go restants ≈ 1,52 jour.
+      final at = (pace as PaceRunsOut).at;
+      expect(at.difference(now).inHours, inInclusiveRange(36, 37));
+    });
+
+    test('consommation modérée : tient jusqu’au bout', () {
+      final pace = projectPace(p, p.usage(go), DateTime(2026, 10, 19, 8, 30));
+      expect(pace, isA<PaceLastsUntilEnd>());
     });
   });
 
@@ -90,9 +119,19 @@ void main() {
     test('regroupe les uids système et trie par volume', () {
       final rows = UsageSource.aggregate([
         const AppUsage(owner: UsageOwner.system, bytes: 10),
-        const AppUsage(owner: UsageOwner.app, bytes: 50, packageName: 'a', label: 'A'),
+        const AppUsage(
+          owner: UsageOwner.app,
+          bytes: 50,
+          packageName: 'a',
+          label: 'A',
+        ),
         const AppUsage(owner: UsageOwner.system, bytes: 30),
-        const AppUsage(owner: UsageOwner.app, bytes: 0, packageName: 'b', label: 'B'),
+        const AppUsage(
+          owner: UsageOwner.app,
+          bytes: 0,
+          packageName: 'b',
+          label: 'B',
+        ),
       ]);
       expect(rows.map((r) => r.displayName), ['A', 'Système Android']);
       expect(rows.last.bytes, 40);
@@ -100,9 +139,24 @@ void main() {
 
     test('tri par nom sans tenir compte des accents', () {
       final sorted = sortApps(const [
-        AppUsage(owner: UsageOwner.app, bytes: 1, packageName: 'z', label: 'Zoom'),
-        AppUsage(owner: UsageOwner.app, bytes: 2, packageName: 'e', label: 'Éducation'),
-        AppUsage(owner: UsageOwner.app, bytes: 3, packageName: 'c', label: 'Chrome'),
+        AppUsage(
+          owner: UsageOwner.app,
+          bytes: 1,
+          packageName: 'z',
+          label: 'Zoom',
+        ),
+        AppUsage(
+          owner: UsageOwner.app,
+          bytes: 2,
+          packageName: 'e',
+          label: 'Éducation',
+        ),
+        AppUsage(
+          owner: UsageOwner.app,
+          bytes: 3,
+          packageName: 'c',
+          label: 'Chrome',
+        ),
       ], AppSort.name);
       expect(sorted.map((a) => a.displayName), ['Chrome', 'Éducation', 'Zoom']);
     });
@@ -111,9 +165,25 @@ void main() {
   group('conseils', () {
     test('la vidéo passe en premier au-delà d’un quart des données', () {
       final focus = focusFor(const [
-        AppUsage(owner: UsageOwner.app, bytes: 40, packageName: 'com.zhiliaoapp.musically', label: 'TikTok'),
-        AppUsage(owner: UsageOwner.app, bytes: 35, packageName: 'com.whatsapp', label: 'WhatsApp'),
-        AppUsage(owner: UsageOwner.app, bytes: 25, packageName: 'x', label: 'X', category: 'video'),
+        AppUsage(
+          owner: UsageOwner.app,
+          bytes: 40,
+          packageName: 'com.zhiliaoapp.musically',
+          label: 'TikTok',
+        ),
+        AppUsage(
+          owner: UsageOwner.app,
+          bytes: 35,
+          packageName: 'com.whatsapp',
+          label: 'WhatsApp',
+        ),
+        AppUsage(
+          owner: UsageOwner.app,
+          bytes: 25,
+          packageName: 'x',
+          label: 'X',
+          category: 'video',
+        ),
       ])!;
       expect(focus.category, TipCategory.video);
       expect(focus.share, closeTo(0.65, 0.001));
@@ -121,8 +191,18 @@ void main() {
 
     test('sinon, l’application la plus gourmande', () {
       final focus = focusFor(const [
-        AppUsage(owner: UsageOwner.app, bytes: 70, packageName: 'com.whatsapp', label: 'WhatsApp'),
-        AppUsage(owner: UsageOwner.app, bytes: 30, packageName: 'com.android.chrome', label: 'Chrome'),
+        AppUsage(
+          owner: UsageOwner.app,
+          bytes: 70,
+          packageName: 'com.whatsapp',
+          label: 'WhatsApp',
+        ),
+        AppUsage(
+          owner: UsageOwner.app,
+          bytes: 30,
+          packageName: 'com.android.chrome',
+          label: 'Chrome',
+        ),
       ])!;
       expect(focus.category, isNull);
       expect(focus.headline, startsWith('WhatsApp'));

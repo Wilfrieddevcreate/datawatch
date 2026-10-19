@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Fond de l'icône : encre avec un léger dégradé, plus clair en haut, pour
+     se détacher aussi des fonds d'écran sombres. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <gradient
+        android:angle="270"
+        android:endColor="#0C0F14"
+        android:startColor="#222837"
+        android:type="linear" />
+</shape>

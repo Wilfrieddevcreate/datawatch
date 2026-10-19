@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../../app/app_scope.dart';
+import '../../domain/data_plan.dart';
+import '../theme/tokens.dart';
+import '../widgets/page_header.dart';
 import 'apps_screen.dart';
 import 'dashboard_screen.dart';
 import 'plan_screen.dart';
@@ -24,27 +28,57 @@ class _HomeShellState extends State<HomeShell> {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.dw;
+    final level = AppScope.of(context).planUsage?.level;
+    final alerts = DwHeaderButton(
+      icon: Icons.notifications_none_rounded,
+      tooltip: 'Seuils d’alerte',
+      onPressed: () => _goTo(_plan),
+      badgeColor: switch (level) {
+        UsageLevel.exhausted => c.critical,
+        UsageLevel.warning => c.warning,
+        _ => null,
+      },
+    );
+    final actions = [alerts];
+
     return Scaffold(
-      body: SafeArea(
-        bottom: false,
-        child: IndexedStack(
-          index: _index,
-          children: [
-            DashboardScreen(onOpenPlan: () => _goTo(_plan), onOpenApps: () => _goTo(_apps)),
-            const AppsScreen(),
-            PlanScreen(onSaved: () => _goTo(_dashboard)),
-            const TipsScreen(),
-          ],
-        ),
+      body: IndexedStack(
+        index: _index,
+        children: [
+          DashboardScreen(
+            actions: actions,
+            onOpenPlan: () => _goTo(_plan),
+            onOpenApps: () => _goTo(_apps),
+          ),
+          AppsScreen(actions: actions),
+          PlanScreen(actions: actions, onSaved: () => _goTo(_dashboard)),
+          TipsScreen(actions: actions),
+        ],
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
         onDestinationSelected: _goTo,
         destinations: const [
-          NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home_rounded), label: 'Accueil'),
-          NavigationDestination(icon: Icon(Icons.grid_view_rounded), label: 'Applis'),
-          NavigationDestination(icon: Icon(Icons.sim_card_outlined), selectedIcon: Icon(Icons.sim_card_rounded), label: 'Forfait'),
-          NavigationDestination(icon: Icon(Icons.lightbulb_outline_rounded), selectedIcon: Icon(Icons.lightbulb_rounded), label: 'Conseils'),
+          NavigationDestination(
+            icon: Icon(Icons.home_outlined),
+            selectedIcon: Icon(Icons.home_rounded),
+            label: 'Accueil',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.grid_view_rounded),
+            label: 'Applis',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.sim_card_outlined),
+            selectedIcon: Icon(Icons.sim_card_rounded),
+            label: 'Forfait',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.lightbulb_outline_rounded),
+            selectedIcon: Icon(Icons.lightbulb_rounded),
+            label: 'Conseils',
+          ),
         ],
       ),
     );

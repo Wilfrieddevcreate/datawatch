@@ -19,12 +19,18 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   bool _sentToSettings = false;
 
   Future<void> _openSettings() async {
-    final opened = await AppScope.of(context).openUsageSettings().then((_) => true, onError: (_) => false);
+    final opened = await AppScope.of(
+      context,
+    ).openUsageSettings().then((_) => true, onError: (_) => false);
     if (!mounted) return;
     setState(() => _sentToSettings = true);
     if (!opened) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Ouvrez Paramètres › Applications › Accès spécial › Accès aux données d’utilisation.')),
+        const SnackBar(
+          content: Text(
+            'Ouvrez Paramètres › Applications › Accès spécial › Accès aux données d’utilisation.',
+          ),
+        ),
       );
     }
   }
@@ -41,7 +47,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           builder: (context, constraints) => SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
             child: ConstrainedBox(
-              constraints: BoxConstraints(minHeight: constraints.maxHeight - 32),
+              constraints: BoxConstraints(
+                minHeight: constraints.maxHeight - 32,
+              ),
               child: IntrinsicHeight(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -52,7 +60,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     const SizedBox(height: 8),
                     Text(
                       'Voyez où partent vos données.',
-                      style: DwFonts.style(DwFonts.display, 34, 700, height: 1.04, letterSpacing: -1.2),
+                      style: DwFonts.style(
+                        DwFonts.display,
+                        34,
+                        700,
+                        height: 1.04,
+                        letterSpacing: -1.2,
+                      ),
                     ),
                     const SizedBox(height: 10),
                     Text(
@@ -63,7 +77,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     const _Reassurance(
                       icon: Icons.lock_outline_rounded,
                       title: 'Tout reste sur votre téléphone',
-                      subtitle: 'Aucune statistique n’est envoyée sur Internet.',
+                      subtitle:
+                          'Aucune statistique n’est envoyée sur Internet.',
                     ),
                     const SizedBox(height: 14),
                     const _Reassurance(
@@ -94,13 +109,20 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     FilledButton.icon(
                       onPressed: _openSettings,
                       iconAlignment: IconAlignment.end,
-                      icon: Icon(Icons.open_in_new_rounded, size: 18, color: c.accent),
+                      icon: Icon(
+                        Icons.open_in_new_rounded,
+                        size: 18,
+                        color: c.accent,
+                      ),
                       label: const Text('Ouvrir les paramètres Android'),
                     ),
                     const SizedBox(height: 4),
                     TextButton(
                       onPressed: controller.recheckAccess,
-                      child: Text('J’ai accordé l’accès', style: TextStyle(color: c.textSecondary)),
+                      child: Text(
+                        'J’ai accordé l’accès',
+                        style: TextStyle(color: c.textSecondary),
+                      ),
                     ),
                   ],
                 ),
@@ -114,7 +136,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 }
 
 class _Reassurance extends StatelessWidget {
-  const _Reassurance({required this.icon, required this.title, required this.subtitle});
+  const _Reassurance({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+  });
 
   final IconData icon;
   final String title;
@@ -138,7 +164,10 @@ class _Reassurance extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(title, style: t.titleMedium),
-              Text(subtitle, style: t.bodyMedium!.copyWith(color: c.textSecondary)),
+              Text(
+                subtitle,
+                style: t.bodyMedium!.copyWith(color: c.textSecondary),
+              ),
             ],
           ),
         ),
@@ -165,10 +194,42 @@ class _Illustration extends StatelessWidget {
             painter: _DotGrid(),
             child: Stack(
               children: [
-                const Center(child: ReservoirGauge(remainingFraction: 0.56, fillColor: DwColors.tankOk, width: 104, height: 188, markers: [])),
-                const Positioned(left: 14, top: 30, child: _Chip(angle: -0.1, icon: Icons.play_circle_outline_rounded, label: 'Vidéo')),
-                const Positioned(right: 12, top: 84, child: _Chip(angle: 0.09, icon: Icons.chat_bubble_outline_rounded, label: 'Messagerie')),
-                const Positioned(left: 26, bottom: 28, child: _Chip(angle: 0.05, icon: Icons.public_rounded, label: 'Réseaux sociaux')),
+                const Center(
+                  child: ReservoirGauge(
+                    remainingFraction: 0.56,
+                    fillColor: DwColors.tankOk,
+                    width: 104,
+                    height: 188,
+                    markers: [],
+                  ),
+                ),
+                const Positioned(
+                  left: 14,
+                  top: 30,
+                  child: _Chip(
+                    angle: -0.1,
+                    icon: Icons.play_circle_outline_rounded,
+                    label: 'Vidéo',
+                  ),
+                ),
+                const Positioned(
+                  right: 12,
+                  top: 84,
+                  child: _Chip(
+                    angle: 0.09,
+                    icon: Icons.chat_bubble_outline_rounded,
+                    label: 'Messagerie',
+                  ),
+                ),
+                const Positioned(
+                  left: 26,
+                  bottom: 28,
+                  child: _Chip(
+                    angle: 0.05,
+                    icon: Icons.public_rounded,
+                    label: 'Réseaux sociaux',
+                  ),
+                ),
               ],
             ),
           ),
@@ -194,7 +255,13 @@ class _Chip extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          boxShadow: const [BoxShadow(color: Color(0x4D000000), blurRadius: 24, offset: Offset(0, 12))],
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x4D000000),
+              blurRadius: 24,
+              offset: Offset(0, 12),
+            ),
+          ],
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -202,11 +269,21 @@ class _Chip extends StatelessWidget {
             Container(
               width: 28,
               height: 28,
-              decoration: BoxDecoration(color: const Color(0xFFF0FBCB), borderRadius: BorderRadius.circular(9)),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF0FBCB),
+                borderRadius: BorderRadius.circular(9),
+              ),
               child: Icon(icon, size: 16, color: const Color(0xFF3F5A0B)),
             ),
             const SizedBox(width: 8),
-            Text(label, style: DwFonts.style(DwFonts.body, 12.5, 600).copyWith(color: const Color(0xFF0F1218))),
+            Text(
+              label,
+              style: DwFonts.style(
+                DwFonts.body,
+                12.5,
+                600,
+              ).copyWith(color: const Color(0xFF0F1218)),
+            ),
           ],
         ),
       ),

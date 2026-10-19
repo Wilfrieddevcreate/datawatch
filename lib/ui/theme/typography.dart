@@ -21,7 +21,8 @@ abstract final class DwFonts {
       fontWeight: _weight(weight),
       fontVariations: [
         FontVariation.weight(weight.toDouble()),
-        if (family == display) FontVariation.opticalSize(size.clamp(12, 96).toDouble()),
+        if (family == display)
+          FontVariation.opticalSize(size.clamp(12, 96).toDouble()),
       ],
       height: height,
       letterSpacing: letterSpacing,
@@ -30,11 +31,20 @@ abstract final class DwFonts {
   }
 
   static FontWeight _weight(int w) =>
-      FontWeight.values[((w / 100).round() - 1).clamp(0, FontWeight.values.length - 1)];
+      FontWeight.values[((w / 100).round() - 1).clamp(
+        0,
+        FontWeight.values.length - 1,
+      )];
 
   /// Gros chiffre de la carte forfait.
-  static TextStyle hero(double size) =>
-      style(display, size, 700, height: 0.92, letterSpacing: -0.045 * size, tabular: true);
+  static TextStyle hero(double size) => style(
+    display,
+    size,
+    700,
+    height: 0.92,
+    letterSpacing: -0.045 * size,
+    tabular: true,
+  );
 
   /// Libellé technique en capitales : « RESTANT ESTIMÉ ».
   static TextStyle overline(Color color) =>
@@ -44,21 +54,39 @@ abstract final class DwFonts {
 extension DwTextStyle on TextStyle {
   /// Change la graisse en gardant l'axe variable synchronisé.
   TextStyle weight(int w) => copyWith(
-        fontWeight: DwFonts._weight(w),
-        fontVariations: [
-          ...?fontVariations?.where((v) => v.axis != 'wght'),
-          FontVariation.weight(w.toDouble()),
-        ],
-      );
+    fontWeight: DwFonts._weight(w),
+    fontVariations: [
+      ...?fontVariations?.where((v) => v.axis != 'wght'),
+      FontVariation.weight(w.toDouble()),
+    ],
+  );
 }
 
 TextTheme dwTextTheme(Color text) {
   final t = TextTheme(
     displayLarge: DwFonts.hero(72),
     displayMedium: DwFonts.hero(60),
-    headlineMedium: DwFonts.style(DwFonts.display, 32, 700, height: 1.1, letterSpacing: -1.1),
-    headlineSmall: DwFonts.style(DwFonts.display, 26, 700, height: 1.1, letterSpacing: -0.8),
-    titleLarge: DwFonts.style(DwFonts.display, 21, 650, height: 1.2, letterSpacing: -0.4),
+    headlineMedium: DwFonts.style(
+      DwFonts.display,
+      32,
+      700,
+      height: 1.1,
+      letterSpacing: -1.1,
+    ),
+    headlineSmall: DwFonts.style(
+      DwFonts.display,
+      26,
+      700,
+      height: 1.1,
+      letterSpacing: -0.8,
+    ),
+    titleLarge: DwFonts.style(
+      DwFonts.display,
+      21,
+      650,
+      height: 1.2,
+      letterSpacing: -0.4,
+    ),
     titleMedium: DwFonts.style(DwFonts.body, 15, 600, height: 1.3),
     titleSmall: DwFonts.style(DwFonts.body, 14, 600, height: 1.3),
     bodyLarge: DwFonts.style(DwFonts.body, 15, 400, height: 1.45),

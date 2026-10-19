@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Encre de la marque : fond de l'icône et du rond de l'écran de démarrage. -->
+    <color name="ic_launcher_background">#10131A</color>
+    <!-- Fond de l'application (thème clair), visible avant la première image Flutter. -->
+    <color name="splash_background">#EEF0F3</color>
+</resources>

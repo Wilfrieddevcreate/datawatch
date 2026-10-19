@@ -12,7 +12,8 @@ abstract interface class PlanStore {
 }
 
 class PrefsPlanStore implements PlanStore {
-  PrefsPlanStore([SharedPreferencesAsync? prefs]) : _prefs = prefs ?? SharedPreferencesAsync();
+  PrefsPlanStore([SharedPreferencesAsync? prefs])
+    : _prefs = prefs ?? SharedPreferencesAsync();
 
   static const _key = 'plan.v1';
   final SharedPreferencesAsync _prefs;
@@ -31,7 +32,8 @@ class PrefsPlanStore implements PlanStore {
   }
 
   @override
-  Future<void> save(DataPlan plan) => _prefs.setString(_key, jsonEncode(plan.toJson()));
+  Future<void> save(DataPlan plan) =>
+      _prefs.setString(_key, jsonEncode(plan.toJson()));
 
   @override
   Future<void> clear() => _prefs.remove(_key);

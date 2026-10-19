@@ -37,12 +37,12 @@ class AppUsage {
   final String? category;
 
   String get displayName => switch (owner) {
-        UsageOwner.app => label ?? packageName ?? 'Application',
-        UsageOwner.system => 'Système Android',
-        UsageOwner.removed => 'Applications désinstallées',
-        UsageOwner.tethering => 'Partage de connexion',
-        UsageOwner.hidden => 'Autres services',
-      };
+    UsageOwner.app => label ?? packageName ?? 'Application',
+    UsageOwner.system => 'Système Android',
+    UsageOwner.removed => 'Applications désinstallées',
+    UsageOwner.tethering => 'Partage de connexion',
+    UsageOwner.hidden => 'Autres services',
+  };
 
   /// Identifiant stable pour les listes et les caches.
   String get key => owner == UsageOwner.app ? 'app:$packageName' : owner.name;
@@ -72,7 +72,9 @@ class UsageQueryFailed implements Exception {
 class UsageSource {
   const UsageSource();
 
-  static const MethodChannel _channel = MethodChannel('net.alopro.datawatch/usage');
+  static const MethodChannel _channel = MethodChannel(
+    'net.alopro.datawatch/usage',
+  );
 
   Future<bool> hasUsageAccess() async =>
       await _channel.invokeMethod<bool>('hasUsageAccess') ?? false;
@@ -82,10 +84,12 @@ class UsageSource {
       await _channel.invokeMethod<bool>('openUsageAccessSettings') ?? false;
 
   Future<DeviceTotals> deviceTotals(DateTime start, DateTime end) async {
-    final raw = await _guard(() => _channel.invokeMapMethod<String, Object?>(
-          'getDeviceTotals',
-          _range(start, end),
-        ));
+    final raw = await _guard(
+      () => _channel.invokeMapMethod<String, Object?>(
+        'getDeviceTotals',
+        _range(start, end),
+      ),
+    );
     return DeviceTotals(
       mobileBytes: (raw?['mobileBytes'] as num?)?.toInt(),
       wifiBytes: (raw?['wifiBytes'] as num?)?.toInt(),
@@ -94,11 +98,17 @@ class UsageSource {
 
   /// Consommation par application, regroupée et triée de la plus gourmande
   /// à la moins gourmande.
-  Future<List<AppUsage>> appUsage(NetworkKind network, DateTime start, DateTime end) async {
-    final raw = await _guard(() => _channel.invokeListMethod<Map<Object?, Object?>>(
-          'getAppUsage',
-          {..._range(start, end), 'network': network.name},
-        ));
+  Future<List<AppUsage>> appUsage(
+    NetworkKind network,
+    DateTime start,
+    DateTime end,
+  ) async {
+    final raw = await _guard(
+      () => _channel.invokeListMethod<Map<Object?, Object?>>('getAppUsage', {
+        ..._range(start, end),
+        'network': network.name,
+      }),
+    );
     return aggregate((raw ?? const []).map(_parse));
   }
 
@@ -145,9 +155,9 @@ class UsageSource {
   }
 
   static Map<String, Object> _range(DateTime start, DateTime end) => {
-        'start': start.millisecondsSinceEpoch,
-        'end': end.millisecondsSinceEpoch,
-      };
+    'start': start.millisecondsSinceEpoch,
+    'end': end.millisecondsSinceEpoch,
+  };
 
   static Future<T> _guard<T>(Future<T> Function() call) async {
     try {

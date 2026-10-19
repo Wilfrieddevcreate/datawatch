@@ -7,6 +7,7 @@ import '../../core/units.dart';
 import '../../domain/data_plan.dart';
 import '../theme/tokens.dart';
 import '../theme/typography.dart';
+import '../widgets/page_header.dart';
 import '../widgets/segmented.dart';
 import '../widgets/usage_row.dart';
 
@@ -22,8 +23,10 @@ enum Validity {
   final String label;
   final Duration? duration;
 
-  static Validity of(Duration d) =>
-      Validity.values.firstWhere((v) => v.duration == d, orElse: () => Validity.custom);
+  static Validity of(Duration d) => Validity.values.firstWhere(
+    (v) => v.duration == d,
+    orElse: () => Validity.custom,
+  );
 }
 
 /// Volume saisi (« 5 », « 1,5 », « 5 120 ») converti en octets.
@@ -31,7 +34,9 @@ int? parseVolume(String text, VolumeUnit unit) {
   final cleaned = text.replaceAll(RegExp(r'[\s ]'), '').replaceAll(',', '.');
   final value = double.tryParse(cleaned);
   if (value == null || value <= 0) return null;
-  final factor = unit == VolumeUnit.go ? DataUnits.bytesPerGo : DataUnits.bytesPerMo;
+  final factor = unit == VolumeUnit.go
+      ? DataUnits.bytesPerGo
+      : DataUnits.bytesPerMo;
   return (value * factor).round();
 }
 
@@ -41,8 +46,9 @@ String volumeText(int bytes, VolumeUnit unit) => unit == VolumeUnit.go
     : formatNumber(bytes / DataUnits.bytesPerMo, maxDecimals: 0);
 
 class PlanScreen extends StatefulWidget {
-  const PlanScreen({super.key, required this.onSaved});
+  const PlanScreen({super.key, required this.actions, required this.onSaved});
 
+  final List<Widget> actions;
   final VoidCallback onSaved;
 
   @override
@@ -95,7 +101,9 @@ class _PlanScreenState extends State<PlanScreen> {
       return;
     }
     _operator = plan.operator;
-    _unit = plan.volumeBytes >= DataUnits.bytesPerGo ? VolumeUnit.go : VolumeUnit.mo;
+    _unit = plan.volumeBytes >= DataUnits.bytesPerGo
+        ? VolumeUnit.go
+        : VolumeUnit.mo;
     _volume.text = volumeText(plan.volumeBytes, _unit);
     _start = plan.start;
     _validity = Validity.of(plan.validity);
@@ -117,7 +125,9 @@ class _PlanScreenState extends State<PlanScreen> {
 
   int? get _volumeBytes => parseVolume(_volume.text, _unit);
 
-  DateTime? get _end => _validity == Validity.custom ? _customEnd : _start.add(_validity.duration!);
+  DateTime? get _end => _validity == Validity.custom
+      ? _customEnd
+      : _start.add(_validity.duration!);
 
   void _setUnit(VolumeUnit unit) {
     if (unit == _unit) return;
@@ -152,7 +162,13 @@ class _PlanScreenState extends State<PlanScreen> {
       helpText: 'Heure d’achat ou d’activation',
     );
     if (time == null) return;
-    var picked = DateTime(date.year, date.month, date.day, time.hour, time.minute);
+    var picked = DateTime(
+      date.year,
+      date.month,
+      date.day,
+      time.hour,
+      time.minute,
+    );
     if (picked.isAfter(now)) picked = _nowMinute();
     setState(() => _start = picked);
   }
@@ -167,11 +183,20 @@ class _PlanScreenState extends State<PlanScreen> {
       helpText: 'Fin du forfait',
     );
     if (date == null || !mounted) return;
-    final time = await showTimePicker(context: context, initialTime: TimeOfDay.fromDateTime(_start));
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(_start),
+    );
     if (time == null) return;
     setState(() {
       _validity = Validity.custom;
-      _customEnd = DateTime(date.year, date.month, date.day, time.hour, time.minute);
+      _customEnd = DateTime(
+        date.year,
+        date.month,
+        date.day,
+        time.hour,
+        time.minute,
+      );
     });
   }
 
@@ -184,7 +209,11 @@ class _PlanScreenState extends State<PlanScreen> {
     }
     if (end == null || !end.isAfter(_start)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Choisissez une date de fin après le début du forfait.')),
+        const SnackBar(
+          content: Text(
+            'Choisissez une date de fin après le début du forfait.',
+          ),
+        ),
       );
       return null;
     }
@@ -213,7 +242,9 @@ class _PlanScreenState extends State<PlanScreen> {
     setState(() {
       final duration = _end?.difference(_start);
       _start = _nowMinute();
-      if (_validity == Validity.custom && duration != null) _customEnd = _start.add(duration);
+      if (_validity == Validity.custom && duration != null) {
+        _customEnd = _start.add(duration);
+      }
     });
     await _save(message: 'Nouveau suivi démarré');
   }
@@ -223,9 +254,14 @@ class _PlanScreenState extends State<PlanScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Réinitialiser le forfait ?'),
-        content: const Text('Le forfait déclaré et ses seuils seront effacés de ce téléphone.'),
+        content: const Text(
+          'Le forfait déclaré et ses seuils seront effacés de ce téléphone.',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Annuler')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Annuler'),
+          ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
             style: TextButton.styleFrom(foregroundColor: context.dw.critical),
@@ -242,18 +278,27 @@ class _PlanScreenState extends State<PlanScreen> {
   Widget build(BuildContext context) {
     final c = context.dw;
     final t = Theme.of(context).textTheme;
-    final hasPlan = AppScope.of(context).plan != null;
+    final controller = AppScope.of(context);
+    final saved = controller.plan;
+    final now = controller.now();
+    final hasPlan = saved != null;
     final bytes = _volumeBytes;
     final end = _end;
 
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+    return DwPage(
+      title: 'Mon forfait',
+      overline: saved == null
+          ? 'Aucun forfait déclaré'
+          : '${saved.operator.label} · ${formatBytes(saved.volumeBytes)} · ${saved.isExpired(now) ? 'expiré' : 'actif'}',
+      subtitle: Text(
+        saved == null
+            ? 'Déclarez votre forfait pour suivre ce qu’il reste.'
+            : saved.isExpired(now)
+            ? 'Expiré le ${formatDayMonthTime(saved.end)}. Démarrez un nouveau suivi après votre recharge.'
+            : 'Expire dans ${formatRemaining(saved.end.difference(now))}, le ${formatDayMonthTime(saved.end)}.',
+      ),
+      actions: widget.actions,
       children: [
-        Text('Mon forfait', style: t.headlineMedium),
-        const SizedBox(height: 2),
-        Text('Déclarez votre forfait pour suivre ce qu’il reste.', style: t.bodyMedium!.copyWith(color: c.textSecondary)),
-        const SizedBox(height: 16),
-
         _Section(
           title: 'Opérateur',
           child: DwSegmented<Operator>(
@@ -283,10 +328,20 @@ class _PlanScreenState extends State<PlanScreen> {
             children: [
               TextField(
                 controller: _volume,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9,.\s]'))],
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'[0-9,.\s]')),
+                ],
                 onChanged: (_) => setState(() => _volumeError = null),
-                style: DwFonts.style(DwFonts.display, 52, 700, letterSpacing: -2, tabular: true),
+                style: DwFonts.style(
+                  DwFonts.display,
+                  52,
+                  700,
+                  letterSpacing: -2,
+                  tabular: true,
+                ),
                 decoration: InputDecoration(
                   hintText: '0',
                   errorText: _volumeError,
@@ -294,10 +349,20 @@ class _PlanScreenState extends State<PlanScreen> {
                   isDense: true,
                   contentPadding: const EdgeInsets.only(bottom: 4),
                   suffixText: _unit == VolumeUnit.go ? 'Go' : 'Mo',
-                  suffixStyle: DwFonts.style(DwFonts.display, 24, 600).copyWith(color: c.text),
-                  border: UnderlineInputBorder(borderSide: BorderSide(color: c.strong, width: 2)),
-                  enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: c.strong, width: 2)),
-                  focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: c.wifi, width: 2)),
+                  suffixStyle: DwFonts.style(
+                    DwFonts.display,
+                    24,
+                    600,
+                  ).copyWith(color: c.text),
+                  border: UnderlineInputBorder(
+                    borderSide: BorderSide(color: c.strong, width: 2),
+                  ),
+                  enabledBorder: UnderlineInputBorder(
+                    borderSide: BorderSide(color: c.strong, width: 2),
+                  ),
+                  focusedBorder: UnderlineInputBorder(
+                    borderSide: BorderSide(color: c.wifi, width: 2),
+                  ),
                 ),
               ),
               const SizedBox(height: 8),
@@ -305,9 +370,13 @@ class _PlanScreenState extends State<PlanScreen> {
                 bytes == null
                     ? '1${nbsp}Go = 1${nbsp}024${nbsp}Mo'
                     : _unit == VolumeUnit.go
-                        ? '= ${formatThousands((bytes / DataUnits.bytesPerMo).round())}${nbsp}Mo · 1${nbsp}Go = 1${nbsp}024${nbsp}Mo'
-                        : '= ${formatNumber(bytes / DataUnits.bytesPerGo)}${nbsp}Go · 1${nbsp}Go = 1${nbsp}024${nbsp}Mo',
-                style: DwFonts.style(DwFonts.mono, 12, 400).copyWith(color: c.textSecondary),
+                    ? '= ${formatThousands((bytes / DataUnits.bytesPerMo).round())}${nbsp}Mo · 1${nbsp}Go = 1${nbsp}024${nbsp}Mo'
+                    : '= ${formatNumber(bytes / DataUnits.bytesPerGo)}${nbsp}Go · 1${nbsp}Go = 1${nbsp}024${nbsp}Mo',
+                style: DwFonts.style(
+                  DwFonts.mono,
+                  12,
+                  400,
+                ).copyWith(color: c.textSecondary),
               ),
               const SizedBox(height: 12),
               Row(
@@ -341,7 +410,10 @@ class _PlanScreenState extends State<PlanScreen> {
                 onTap: _pickStart,
               ),
               const SizedBox(height: 12),
-              Text('Validité', style: t.bodySmall!.copyWith(color: c.textSecondary)),
+              Text(
+                'Validité',
+                style: t.bodySmall!.copyWith(color: c.textSecondary),
+              ),
               const SizedBox(height: 8),
               DwSegmented<Validity>(
                 values: Validity.values,
@@ -349,20 +421,29 @@ class _PlanScreenState extends State<PlanScreen> {
                 trackColor: c.background,
                 fontSize: 13.5,
                 labelOf: (v) => v.label,
-                onChanged: (v) => v == Validity.custom ? _pickCustomEnd() : setState(() => _validity = v),
+                onChanged: (v) => v == Validity.custom
+                    ? _pickCustomEnd()
+                    : setState(() => _validity = v),
               ),
               const SizedBox(height: 12),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).brightness == Brightness.light ? const Color(0xFFF0FBCB) : c.positiveSoft,
+                  color: Theme.of(context).brightness == Brightness.light
+                      ? const Color(0xFFF0FBCB)
+                      : c.positiveSoft,
                   borderRadius: BorderRadius.circular(DwRadius.md),
                 ),
                 child: Row(
                   children: [
                     Expanded(child: Text('Fin du suivi', style: t.bodyMedium)),
                     Text(
-                      end == null ? 'Choisir une date' : '${formatDate(end)} à ${formatTime(end)}',
+                      end == null
+                          ? 'Choisir une date'
+                          : '${formatDate(end)} à ${formatTime(end)}',
                       style: t.titleSmall,
                     ),
                   ],
@@ -380,10 +461,14 @@ class _PlanScreenState extends State<PlanScreen> {
               for (final pct in DataPlan.defaultThresholds.toList()..sort())
                 _ThresholdRow(
                   percent: pct,
-                  amount: bytes == null ? null : formatBytes(bytes * pct ~/ 100),
+                  amount: bytes == null
+                      ? null
+                      : formatBytes(bytes * pct ~/ 100),
                   enabled: _thresholds.contains(pct),
                   onChanged: (on) => setState(() {
-                    _thresholds = on ? ({..._thresholds, pct}) : (_thresholds.where((t) => t != pct).toSet());
+                    _thresholds = on
+                        ? ({..._thresholds, pct})
+                        : (_thresholds.where((t) => t != pct).toSet());
                   }),
                 ),
             ],
@@ -411,17 +496,27 @@ class _PlanScreenState extends State<PlanScreen> {
                     ),
                   ),
                   const SizedBox(width: 12),
-                  Switch(value: _recurring, onChanged: (v) => setState(() => _recurring = v)),
+                  Switch(
+                    value: _recurring,
+                    onChanged: (v) => setState(() => _recurring = v),
+                  ),
                 ],
               ),
               const SizedBox(height: 12),
               Container(
                 padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(color: c.surfaceMuted, borderRadius: BorderRadius.circular(DwRadius.md)),
+                decoration: BoxDecoration(
+                  color: c.surfaceMuted,
+                  borderRadius: BorderRadius.circular(DwRadius.md),
+                ),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(Icons.info_outline_rounded, size: 16, color: c.textSecondary),
+                    Icon(
+                      Icons.info_outline_rounded,
+                      size: 16,
+                      color: c.textSecondary,
+                    ),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
@@ -437,12 +532,20 @@ class _PlanScreenState extends State<PlanScreen> {
         ),
         const SizedBox(height: 16),
 
-        FilledButton(onPressed: _save, child: const Text('Enregistrer le forfait')),
+        FilledButton(
+          onPressed: _save,
+          child: const Text('Enregistrer le forfait'),
+        ),
         if (hasPlan) ...[
           const SizedBox(height: 8),
           Row(
             children: [
-              Expanded(child: OutlinedButton(onPressed: _restartNow, child: const Text('Nouveau suivi'))),
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: _restartNow,
+                  child: const Text('Nouveau suivi'),
+                ),
+              ),
               const SizedBox(width: 8),
               Expanded(
                 child: TextButton(
@@ -475,7 +578,14 @@ class _Section extends StatelessWidget {
         children: [
           Row(
             children: [
-              Expanded(child: Text(title, style: t.bodyMedium!.weight(600).copyWith(color: context.dw.textSecondary))),
+              Expanded(
+                child: Text(
+                  title,
+                  style: t.bodyMedium!
+                      .weight(600)
+                      .copyWith(color: context.dw.textSecondary),
+                ),
+              ),
               ?trailing,
             ],
           ),
@@ -488,7 +598,11 @@ class _Section extends StatelessWidget {
 }
 
 class _PresetButton extends StatelessWidget {
-  const _PresetButton({required this.label, required this.selected, required this.onTap});
+  const _PresetButton({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
 
   final String label;
   final bool selected;
@@ -511,7 +625,14 @@ class _PresetButton extends StatelessWidget {
           borderRadius: BorderRadius.circular(DwRadius.md),
           child: SizedBox(
             height: 44,
-            child: Center(child: Text(label, style: Theme.of(context).textTheme.titleSmall!.copyWith(fontSize: 13.5))),
+            child: Center(
+              child: Text(
+                label,
+                style: Theme.of(
+                  context,
+                ).textTheme.titleSmall!.copyWith(fontSize: 13.5),
+              ),
+            ),
           ),
         ),
       ),
@@ -520,7 +641,12 @@ class _PresetButton extends StatelessWidget {
 }
 
 class _FieldButton extends StatelessWidget {
-  const _FieldButton({required this.icon, required this.label, required this.value, required this.onTap});
+  const _FieldButton({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.onTap,
+  });
 
   final IconData icon;
   final String label;
@@ -553,7 +679,10 @@ class _FieldButton extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(label, style: t.bodySmall!.copyWith(color: c.textSecondary)),
+                      Text(
+                        label,
+                        style: t.bodySmall!.copyWith(color: c.textSecondary),
+                      ),
                       Text(value, style: t.titleMedium),
                     ],
                   ),
@@ -569,7 +698,12 @@ class _FieldButton extends StatelessWidget {
 }
 
 class _ThresholdRow extends StatelessWidget {
-  const _ThresholdRow({required this.percent, required this.amount, required this.enabled, required this.onChanged});
+  const _ThresholdRow({
+    required this.percent,
+    required this.amount,
+    required this.enabled,
+    required this.onChanged,
+  });
 
   final int percent;
   final String? amount;
@@ -594,18 +728,31 @@ class _ThresholdRow extends StatelessWidget {
               width: 64,
               child: Text(
                 '$percent$nbsp%',
-                style: DwFonts.style(DwFonts.display, 22, 700, letterSpacing: -0.6).copyWith(color: color),
+                style: DwFonts.style(
+                  DwFonts.display,
+                  22,
+                  700,
+                  letterSpacing: -0.6,
+                ).copyWith(color: color),
               ),
             ),
             Expanded(
               child: amount == null
-                  ? Text('du volume déclaré', style: t.bodyMedium!.copyWith(color: c.textSecondary))
+                  ? Text(
+                      'du volume déclaré',
+                      style: t.bodyMedium!.copyWith(color: c.textSecondary),
+                    )
                   : Text.rich(
-                      TextSpan(children: [
-                        const TextSpan(text: 'à '),
-                        TextSpan(text: amount, style: TextStyle(color: c.text).weight(600)),
-                        const TextSpan(text: ' consommés'),
-                      ]),
+                      TextSpan(
+                        children: [
+                          const TextSpan(text: 'à '),
+                          TextSpan(
+                            text: amount,
+                            style: TextStyle(color: c.text).weight(600),
+                          ),
+                          const TextSpan(text: ' consommés'),
+                        ],
+                      ),
                       style: t.bodyMedium!.copyWith(color: c.textSecondary),
                     ),
             ),

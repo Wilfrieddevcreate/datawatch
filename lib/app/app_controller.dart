@@ -46,8 +46,8 @@ class AppController extends ChangeNotifier {
     this._source = const UsageSource(),
     PlanStore? store,
     DateTime Function()? clock,
-  })  : _store = store ?? PrefsPlanStore(),
-        _clock = clock ?? DateTime.now;
+  }) : _store = store ?? PrefsPlanStore(),
+       _clock = clock ?? DateTime.now;
 
   final UsageSource _source;
   final PlanStore _store;
@@ -116,11 +116,15 @@ class AppController extends ChangeNotifier {
     final today = DateTime(now.year, now.month, now.day);
     return switch (p) {
       UsagePeriod.today => DateRange(today, now),
-      UsagePeriod.week => DateRange(today.subtract(const Duration(days: 6)), now),
+      UsagePeriod.week => DateRange(
+        today.subtract(const Duration(days: 6)),
+        now,
+      ),
       UsagePeriod.month => DateRange(DateTime(now.year, now.month), now),
-      UsagePeriod.plan => plan == null
-          ? DateRange(today.subtract(const Duration(days: 6)), now)
-          : DateRange(plan!.start, plan!.measuredUntil(now)),
+      UsagePeriod.plan =>
+        plan == null
+            ? DateRange(today.subtract(const Duration(days: 6)), now)
+            : DateRange(plan!.start, plan!.measuredUntil(now)),
     };
   }
 
@@ -136,12 +140,32 @@ class AppController extends ChangeNotifier {
     final range = rangeFor(shown, now);
     final currentPlan = plan;
     try {
+      // Forfait qui démarre à l'instant : rien à mesurer encore.
+      if (!range.end.isAfter(range.start)) {
+        snapshot = UsageSnapshot(
+          period: shown,
+          range: range,
+          totals: const DeviceTotals(mobileBytes: 0, wifiBytes: 0),
+          mobileApps: const [],
+          wifiApps: const [],
+          fetchedAt: now,
+        );
+        planUsage = currentPlan?.usage(0);
+        return;
+      }
+      final planRange = currentPlan == null
+          ? null
+          : DateRange(currentPlan.start, currentPlan.measuredUntil(now));
+      final queryPlanSeparately =
+          planRange != null &&
+          shown != UsagePeriod.plan &&
+          planRange.end.isAfter(planRange.start);
       final results = await Future.wait([
         _source.deviceTotals(range.start, range.end),
         _source.appUsage(NetworkKind.mobile, range.start, range.end),
         _source.appUsage(NetworkKind.wifi, range.start, range.end),
-        if (currentPlan != null && shown != UsagePeriod.plan)
-          _source.deviceTotals(currentPlan.start, currentPlan.measuredUntil(now)),
+        if (queryPlanSeparately)
+          _source.deviceTotals(planRange.start, planRange.end),
       ]);
       if (id != _requestId) return;
 
@@ -156,10 +180,15 @@ class AppController extends ChangeNotifier {
       );
       if (currentPlan == null) {
         planUsage = null;
-      } else {
-        final planTotals = results.length > 3 ? results[3] as DeviceTotals : totals;
-        final used = planTotals.mobileBytes;
+      } else if (queryPlanSeparately) {
+        final used = (results[3] as DeviceTotals).mobileBytes;
         planUsage = used == null ? null : currentPlan.usage(used);
+      } else if (shown == UsagePeriod.plan) {
+        final used = totals.mobileBytes;
+        planUsage = used == null ? null : currentPlan.usage(used);
+      } else {
+        // Le forfait démarre à l'instant.
+        planUsage = currentPlan.usage(0);
       }
     } on UsageAccessDenied {
       if (id != _requestId) return;
