@@ -1,11 +1,13 @@
 package net.alopro.datawatch.usage
 
+import android.annotation.TargetApi
 import android.app.usage.NetworkStats
 import android.content.Context
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.os.Build
 import android.os.Process
 import java.io.ByteArrayOutputStream
 
@@ -42,7 +44,8 @@ class AppResolver(context: Context) {
             "kind" to "app",
             "packageName" to info.packageName,
             "label" to pm.getApplicationLabel(info).toString(),
-            "category" to categoryName(info.category),
+            // Catégorie déclarée par le développeur : Android 8+ seulement.
+            "category" to if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) categoryName(info.category) else null,
             "isSystemApp" to ((info.flags and ApplicationInfo.FLAG_SYSTEM) != 0),
         )
     }
@@ -55,6 +58,7 @@ class AppResolver(context: Context) {
 
     private fun owner(kind: String): Map<String, Any?> = mapOf("kind" to kind)
 
+    @TargetApi(Build.VERSION_CODES.O)
     private fun categoryName(category: Int): String? = when (category) {
         ApplicationInfo.CATEGORY_VIDEO -> "video"
         ApplicationInfo.CATEGORY_AUDIO -> "audio"

@@ -14,6 +14,26 @@ import '../widgets/usage_row.dart';
 
 enum VolumeUnit { mo, go }
 
+/// Choix rapide des seuils d'alerte.
+enum ThresholdPreset {
+  everyTwenty('Tous les 20\u00A0%', DataPlan.everyTwentyThresholds),
+  classic('50 · 80 · 100\u00A0%', DataPlan.classicThresholds);
+
+  const ThresholdPreset(this.label, this.thresholds);
+  final String label;
+  final Set<int> thresholds;
+
+  /// Le choix rapide d'où viennent des seuils enregistrés.
+  static ThresholdPreset of(Set<int> thresholds) {
+    final usesClassic = thresholds.any(
+      (t) =>
+          DataPlan.classicThresholds.contains(t) &&
+          !DataPlan.everyTwentyThresholds.contains(t),
+    );
+    return usesClassic ? classic : everyTwenty;
+  }
+}
+
 enum Validity {
   day('24${nbsp}h', Duration(hours: 24)),
   week('7 jours', Duration(days: 7)),
@@ -73,6 +93,7 @@ class _PlanScreenState extends State<PlanScreen> {
   Validity _validity = Validity.week;
   DateTime? _customEnd;
   Set<int> _thresholds = {...DataPlan.defaultThresholds};
+  ThresholdPreset _preset = ThresholdPreset.everyTwenty;
   bool _recurring = false;
   String? _volumeError;
 
@@ -100,6 +121,7 @@ class _PlanScreenState extends State<PlanScreen> {
       _validity = Validity.week;
       _customEnd = null;
       _thresholds = {...DataPlan.defaultThresholds};
+      _preset = ThresholdPreset.everyTwenty;
       _recurring = false;
       return;
     }
@@ -112,6 +134,7 @@ class _PlanScreenState extends State<PlanScreen> {
     _validity = Validity.of(plan.validity);
     _customEnd = _validity == Validity.custom ? plan.end : null;
     _thresholds = {...plan.thresholds};
+    _preset = ThresholdPreset.of(plan.thresholds);
     _recurring = plan.recurring;
   }
 
@@ -248,7 +271,7 @@ class _PlanScreenState extends State<PlanScreen> {
   }
 
   Future<void> _addThreshold() async {
-    final existing = {...DataPlan.defaultThresholds, ..._thresholds};
+    final existing = {..._preset.thresholds, ..._thresholds};
     final bytes = _volumeBytes;
     var value = existing.contains(90) ? 70 : 90;
     final picked = await showDialog<int>(
@@ -529,8 +552,20 @@ class _PlanScreenState extends State<PlanScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              DwSegmented<ThresholdPreset>(
+                values: ThresholdPreset.values,
+                selected: _preset,
+                trackColor: c.background,
+                fontSize: 13.5,
+                labelOf: (p) => p.label,
+                onChanged: (p) => setState(() {
+                  _preset = p;
+                  _thresholds = {...p.thresholds};
+                }),
+              ),
+              const SizedBox(height: 4),
               for (final pct in ({
-                ...DataPlan.defaultThresholds,
+                ..._preset.thresholds,
                 ..._thresholds,
               }.toList()..sort()))
                 _ThresholdRow(
@@ -544,8 +579,8 @@ class _PlanScreenState extends State<PlanScreen> {
                         ? ({..._thresholds, pct})
                         : (_thresholds.where((t) => t != pct).toSet());
                   }),
-                  // Les seuils ajoutés se retirent ; ceux par défaut se désactivent.
-                  onRemove: DataPlan.defaultThresholds.contains(pct)
+                  // Les seuils ajoutés se retirent ; ceux du choix rapide se désactivent.
+                  onRemove: _preset.thresholds.contains(pct)
                       ? null
                       : () => setState(
                           () => _thresholds = _thresholds

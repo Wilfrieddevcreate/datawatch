@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
 
+import '../../app/app_controller.dart';
+import '../../app/app_scope.dart';
 import '../theme/tokens.dart';
 import '../widgets/page_header.dart';
 import '../widgets/usage_row.dart';
+
+/// Lien affiché sous le texte d'une page d'information.
+typedef InfoLink = ({IconData icon, String label, String url});
 
 /// Page de texte en sections (explication de la mesure, confidentialité).
 class InfoScreen extends StatelessWidget {
@@ -12,6 +17,7 @@ class InfoScreen extends StatelessWidget {
     required this.overline,
     required this.intro,
     required this.sections,
+    this.links = const [],
     this.footer,
   });
 
@@ -19,6 +25,7 @@ class InfoScreen extends StatelessWidget {
   final String overline;
   final String intro;
   final List<(String, String)> sections;
+  final List<InfoLink> links;
   final String? footer;
 
   static Route<void> measurement() => MaterialPageRoute(
@@ -41,7 +48,7 @@ class InfoScreen extends StatelessWidget {
         ),
         (
           'Deux cartes SIM',
-          'Android ne permet pas à une application de séparer la consommation de chaque carte SIM. Les données mobiles affichées regroupent toutes vos cartes.',
+          'Les données mobiles affichées additionnent toutes vos cartes SIM : le forfait déclaré est comparé à ce total.',
         ),
         (
           'Les alertes',
@@ -67,6 +74,10 @@ class InfoScreen extends StatelessWidget {
           'Avec l’autorisation « Accès aux données d’utilisation », DataWatch lit les volumes de données mobiles et Wi-Fi comptés par Android pour chaque application, ainsi que le nom et l’icône des applications installées.',
         ),
         (
+          'Sur Android 9 et avant',
+          'Ces versions exigent l’autorisation « Téléphone » pour compter les données mobiles. DataWatch s’en sert uniquement pour identifier vos cartes SIM auprès des compteurs d’Android. Il ne passe aucun appel et ne lit ni votre journal d’appels, ni votre numéro.',
+        ),
+        (
           'Ce qu’elle ne lit pas',
           'DataWatch ne lit ni vos SMS, ni vos messages, ni vos contacts, ni le contenu de vos échanges, ni votre position. Il ne connaît pas votre solde chez l’opérateur.',
         ),
@@ -75,12 +86,28 @@ class InfoScreen extends StatelessWidget {
           'Le forfait que vous déclarez, vos seuils d’alerte, vos préférences d’affichage et la liste des alertes déjà envoyées. Ces informations restent sur ce téléphone.',
         ),
         (
-          'Aucun partage',
-          'Aucune donnée n’est transmise à des tiers ni utilisée à des fins publicitaires. L’application ne contient ni publicité, ni outil de mesure d’audience.',
+          'Aucun envoi, aucun partage',
+          'DataWatch ne demande pas l’autorisation d’accéder à Internet : il ne peut rien transmettre. Aucune donnée n’est partagée avec des tiers ni utilisée à des fins publicitaires, et l’application ne contient ni publicité, ni outil de mesure d’audience.',
         ),
         (
           'Vos choix',
-          'Vous pouvez retirer l’accès aux données d’utilisation et les notifications à tout moment dans les paramètres d’Android, et tout effacer avec « Effacer les données locales ». Désinstaller DataWatch supprime aussi ses données.',
+          'Vous pouvez retirer les autorisations et les notifications à tout moment dans les paramètres d’Android, et tout effacer avec « Effacer les données locales ». Désinstaller DataWatch supprime aussi ses données.',
+        ),
+        (
+          'Éditeur et contact',
+          'DataWatch est édité par Alopro. Pour toute question sur cette politique ou sur vos données : $publisherEmail · $publisherSite',
+        ),
+      ],
+      links: [
+        (
+          icon: Icons.mail_outline_rounded,
+          label: 'Écrire à $publisherEmail',
+          url: 'mailto:$publisherEmail?subject=DataWatch',
+        ),
+        (
+          icon: Icons.public_rounded,
+          label: 'Visiter $publisherSite',
+          url: 'https://$publisherSite',
         ),
       ],
       footer: 'Dernière mise à jour : 20 octobre 2026',
@@ -129,6 +156,17 @@ class InfoScreen extends StatelessWidget {
               ],
             ),
           ),
+          for (final link in links) ...[
+            const SizedBox(height: 10),
+            OutlinedButton.icon(
+              onPressed: () => AppScope.of(context).openUrl(link.url),
+              icon: Icon(link.icon, size: 18),
+              label: Text(link.label),
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size.fromHeight(52),
+              ),
+            ),
+          ],
           if (footer != null) ...[
             const SizedBox(height: 16),
             Text(

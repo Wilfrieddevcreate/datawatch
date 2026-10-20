@@ -39,10 +39,33 @@ void main() {
     });
 
     test('seuils franchis : 5 Go, 80 % = 4 Go', () {
-      final p = plan();
+      final p = plan().copyWith(thresholds: DataPlan.classicThresholds);
       expect(p.usage(4 * go - 1).reachedThresholds(p.thresholds), [50]);
       expect(p.usage(4 * go).reachedThresholds(p.thresholds), [50, 80]);
     });
+
+    test('par défaut : une alerte tous les 20 %', () {
+      expect(plan().thresholds, {20, 40, 60, 80, 100});
+    });
+  });
+
+  test('alertes tous les 20 % : 45 % consommés → 20 et 40 franchis', () {
+    final p = plan().copyWith(thresholds: DataPlan.everyTwentyThresholds);
+    expect(p.usage((0.45 * 5 * go).round()).reachedThresholds(p.thresholds), [
+      20,
+      40,
+    ]);
+  });
+
+  test('retrouver le choix rapide d’un forfait enregistré', () {
+    expect(
+      ThresholdPreset.of({20, 40, 60, 80, 100}),
+      ThresholdPreset.everyTwenty,
+    );
+    expect(ThresholdPreset.of({40, 80}), ThresholdPreset.everyTwenty);
+    expect(ThresholdPreset.of({50, 80, 100}), ThresholdPreset.classic);
+    expect(ThresholdPreset.of({50, 90}), ThresholdPreset.classic);
+    expect(ThresholdPreset.of({80, 100}), ThresholdPreset.everyTwenty);
   });
 
   group('DataPlan', () {

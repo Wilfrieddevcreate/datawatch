@@ -54,6 +54,25 @@ class DeviceServices {
     }
   }
 
+  /// Vrai si cette version d'Android (9 et avant) exige l'autorisation
+  /// « Téléphone » pour compter les données mobiles, et qu'elle manque.
+  Future<bool> phonePermissionNeeded() async =>
+      await _channel.invokeMethod<bool>('phonePermissionNeeded') ?? false;
+
+  /// Affiche la demande système « Téléphone ». Vrai si accordée.
+  Future<bool> requestPhonePermission() async {
+    try {
+      return await _channel.invokeMethod<bool>('requestPhonePermission') ??
+          false;
+    } on PlatformException {
+      return false;
+    }
+  }
+
+  /// Ouvre un lien web ou une adresse « mailto: » dans l'application adaptée.
+  Future<void> openUrl(String url) =>
+      _channel.invokeMethod('openUrl', {'url': url});
+
   Future<void> openNotificationSettings() =>
       _channel.invokeMethod('openNotificationSettings');
 

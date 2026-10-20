@@ -113,6 +113,14 @@ DateRange? previousRangeFor(UsagePeriod period, DateRange range) {
 
 enum AccessState { unknown, denied, granted }
 
+/// Paquet de DataWatch, pour ouvrir sa propre page dans les paramètres Android.
+const appPackageName = 'net.alopro.datawatch';
+
+/// Coordonnées de l'éditeur, affichées dans les paramètres et la politique
+/// de confidentialité.
+const publisherEmail = 'hello@alopro.net';
+const publisherSite = 'alopro.net';
+
 class AppController extends ChangeNotifier {
   AppController({
     this._source = const UsageSource(),
@@ -131,6 +139,12 @@ class AppController extends ChangeNotifier {
   final DateTime Function() _clock;
 
   AccessState access = AccessState.unknown;
+
+  /// « Accès aux données d'utilisation » accordé.
+  bool usageAccessGranted = false;
+
+  /// Android 9 et avant : l'autorisation « Téléphone » manque encore.
+  bool phonePermissionNeeded = false;
   DataPlan? plan;
   AppSettings settings = const AppSettings();
   DeviceStatus device = const DeviceStatus();
@@ -167,11 +181,35 @@ class AppController extends ChangeNotifier {
   /// À appeler au lancement et à chaque retour au premier plan : l'accès et
   /// les autorisations ont pu changer dans les paramètres Android.
   Future<void> recheckAccess() async {
-    final granted = await _source.hasUsageAccess();
+    usageAccessGranted = await _source.hasUsageAccess();
+    phonePermissionNeeded = await _guardDevice(
+      _services.phonePermissionNeeded,
+      fallback: false,
+    );
+    final granted = usageAccessGranted && !phonePermissionNeeded;
     access = granted ? AccessState.granted : AccessState.denied;
     await refreshDeviceStatus();
     if (granted) await refresh();
   }
+
+  /// Android 9 et avant : demande l'autorisation « Téléphone ». Si Android ne
+  /// l'affiche plus (refus définitif), ouvre la page de l'application.
+  Future<void> requestPhonePermission() async {
+    final granted = await _guardDevice(
+      _services.requestPhonePermission,
+      fallback: false,
+    );
+    if (!granted) {
+      await _guardDevice(
+        () => _services.openAppSettings(appPackageName),
+        fallback: null,
+      );
+    }
+    await recheckAccess();
+  }
+
+  Future<void> openUrl(String url) =>
+      _guardDevice(() => _services.openUrl(url), fallback: null);
 
   Future<void> refreshDeviceStatus() async {
     device = await _guardDevice(_services.status, fallback: device);

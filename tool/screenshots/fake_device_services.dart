@@ -7,10 +7,14 @@ class FakeDeviceServices implements DeviceServices {
   FakeDeviceServices({
     this.notificationsAllowed = true,
     this.backgroundUnrestricted = false,
+    this.phoneNeeded = false,
   });
 
   bool notificationsAllowed;
   bool backgroundUnrestricted;
+
+  /// Simule Android 9 sans l'autorisation « Téléphone ».
+  bool phoneNeeded;
 
   @override
   Future<DeviceStatus> status() async => DeviceStatus(
@@ -21,6 +25,15 @@ class FakeDeviceServices implements DeviceServices {
 
   @override
   Future<bool> requestNotificationPermission() async => notificationsAllowed;
+
+  @override
+  Future<bool> phonePermissionNeeded() async => phoneNeeded;
+
+  @override
+  Future<bool> requestPhonePermission() async => true;
+
+  @override
+  Future<void> openUrl(String url) async {}
 
   @override
   Future<void> openNotificationSettings() async {}

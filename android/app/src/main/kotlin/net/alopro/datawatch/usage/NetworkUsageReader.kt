@@ -10,15 +10,12 @@ import android.os.RemoteException
  * Lecture des compteurs réseau tenus par Android.
  *
  * Limites à connaître :
- * - le subscriberId est nul : depuis Android 10, une application ordinaire ne
- *   peut pas lire l'identifiant de la SIM. Les données mobiles sont donc le
- *   total de toutes les SIM ;
+ * - les données mobiles sont le total de toutes les SIM (voir [MobileSubscribers]) ;
  * - Android regroupe les compteurs par tranches d'environ deux heures : une
- *   période qui commence au milieu d'une tranche peut inclure un peu de
- *   consommation antérieure.
+ *   période qui commence au milieu d'une tranche en reçoit une part au prorata.
  */
 @Suppress("DEPRECATION") // NetworkStatsManager attend toujours ConnectivityManager.TYPE_*.
-class NetworkUsageReader(context: Context) {
+class NetworkUsageReader(private val context: Context) {
 
     enum class Network(val type: Int) {
         MOBILE(ConnectivityManager.TYPE_MOBILE),
@@ -36,6 +33,10 @@ class NetworkUsageReader(context: Context) {
 
     private val stats = context.getSystemService(Context.NETWORK_STATS_SERVICE) as NetworkStatsManager
 
+    /** Identifiants à interroger : toutes les SIM en mobile, aucun en Wi-Fi. */
+    private fun subscribers(network: Network): List<String?> =
+        if (network == Network.MOBILE) MobileSubscribers.ids(context) else listOf(null)
+
     /** Totaux de l'appareil. Une valeur nulle signifie « mesure indisponible ». */
     fun deviceTotals(start: Long, end: Long): Map<String, Long?> = mapOf(
         "mobileBytes" to deviceBytes(Network.MOBILE, start, end),
@@ -43,8 +44,10 @@ class NetworkUsageReader(context: Context) {
     )
 
     private fun deviceBytes(network: Network, start: Long, end: Long): Long? = try {
-        val bucket = stats.querySummaryForDevice(network.type, null, start, end)
-        bucket.rxBytes + bucket.txBytes
+        subscribers(network).sumOf { id ->
+            val bucket = stats.querySummaryForDevice(network.type, id, start, end)
+            bucket.rxBytes + bucket.txBytes
+        }
     } catch (_: RemoteException) {
         null
     }
@@ -52,17 +55,19 @@ class NetworkUsageReader(context: Context) {
     /** Consommation par uid (une application = un uid, sauf uid partagés). */
     fun usageByUid(network: Network, start: Long, end: Long): List<UidUsage> {
         val totals = HashMap<Int, LongArray>()
-        val summary = stats.querySummary(network.type, null, start, end)
-        try {
-            val bucket = NetworkStats.Bucket()
-            while (summary.hasNextBucket()) {
-                summary.getNextBucket(bucket)
-                val acc = totals.getOrPut(bucket.uid) { LongArray(2) }
-                acc[0] += bucket.rxBytes
-                acc[1] += bucket.txBytes
+        for (id in subscribers(network)) {
+            val summary = stats.querySummary(network.type, id, start, end)
+            try {
+                val bucket = NetworkStats.Bucket()
+                while (summary.hasNextBucket()) {
+                    summary.getNextBucket(bucket)
+                    val acc = totals.getOrPut(bucket.uid) { LongArray(2) }
+                    acc[0] += bucket.rxBytes
+                    acc[1] += bucket.txBytes
+                }
+            } finally {
+                summary.close()
             }
-        } finally {
-            summary.close()
         }
         return totals
             .map { (uid, bytes) -> UidUsage(uid, bytes[0], bytes[1]) }
@@ -77,26 +82,28 @@ class NetworkUsageReader(context: Context) {
     fun usageForUidByRange(network: Network, uid: Int, ranges: List<LongArray>): List<Long> {
         if (ranges.isEmpty()) return emptyList()
         val out = LongArray(ranges.size)
-        val details = stats.queryDetailsForUid(
-            network.type,
-            null,
-            ranges.minOf { it[0] },
-            ranges.maxOf { it[1] },
-            uid,
-        )
-        try {
-            val bucket = NetworkStats.Bucket()
-            while (details.hasNextBucket()) {
-                details.getNextBucket(bucket)
-                val bytes = bucket.rxBytes + bucket.txBytes
-                val span = (bucket.endTimeStamp - bucket.startTimeStamp).coerceAtLeast(1)
-                ranges.forEachIndexed { i, range ->
-                    val overlap = minOf(bucket.endTimeStamp, range[1]) - maxOf(bucket.startTimeStamp, range[0])
-                    if (overlap > 0) out[i] += bytes * overlap / span
+        for (id in subscribers(network)) {
+            val details = stats.queryDetailsForUid(
+                network.type,
+                id,
+                ranges.minOf { it[0] },
+                ranges.maxOf { it[1] },
+                uid,
+            )
+            try {
+                val bucket = NetworkStats.Bucket()
+                while (details.hasNextBucket()) {
+                    details.getNextBucket(bucket)
+                    val bytes = bucket.rxBytes + bucket.txBytes
+                    val span = (bucket.endTimeStamp - bucket.startTimeStamp).coerceAtLeast(1)
+                    ranges.forEachIndexed { i, range ->
+                        val overlap = minOf(bucket.endTimeStamp, range[1]) - maxOf(bucket.startTimeStamp, range[0])
+                        if (overlap > 0) out[i] += bytes * overlap / span
+                    }
                 }
+            } finally {
+                details.close()
             }
-        } finally {
-            details.close()
         }
         return out.toList()
     }

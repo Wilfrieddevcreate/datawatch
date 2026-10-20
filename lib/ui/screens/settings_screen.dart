@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../app/app_controller.dart';
 import '../../app/app_scope.dart';
 import '../../core/format.dart';
 import '../theme/tokens.dart';
@@ -197,6 +198,22 @@ class SettingsScreen extends StatelessWidget {
                 title: 'Politique de confidentialité',
                 trailing: const _Chevron(),
                 onTap: () => Navigator.of(context).push(InfoScreen.privacy()),
+              ),
+              _SettingRow(
+                icon: Icons.mail_outline_rounded,
+                title: 'Nous écrire',
+                subtitle: publisherEmail,
+                trailing: const _Chevron(),
+                onTap: () => controller.openUrl(
+                  'mailto:$publisherEmail?subject=DataWatch',
+                ),
+              ),
+              _SettingRow(
+                icon: Icons.public_rounded,
+                title: 'Site web',
+                subtitle: publisherSite,
+                trailing: const _Chevron(),
+                onTap: () => controller.openUrl('https://$publisherSite'),
               ),
             ],
           ),

@@ -21,7 +21,13 @@ class DataPlan {
     this.recurring = false,
   });
 
-  static const Set<int> defaultThresholds = {50, 80, 100};
+  /// Une alerte tous les 20 % : le réglage par défaut retenu.
+  static const Set<int> everyTwentyThresholds = {20, 40, 60, 80, 100};
+
+  /// Les seuils du cahier des charges (section 5.5), proposés en second choix.
+  static const Set<int> classicThresholds = {50, 80, 100};
+
+  static const Set<int> defaultThresholds = everyTwentyThresholds;
 
   final Operator operator;
   final int volumeBytes;

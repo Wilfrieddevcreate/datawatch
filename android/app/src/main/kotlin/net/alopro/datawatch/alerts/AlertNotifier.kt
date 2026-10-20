@@ -6,6 +6,7 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import net.alopro.datawatch.R
 
 /** Notification d'un seuil atteint. Le texte rappelle qu'il s'agit d'une estimation. */
@@ -31,7 +32,14 @@ object AlertNotifier {
         }
         val details = "$text\nEstimation mesurée par ce téléphone : ce n’est pas le solde officiel de l’opérateur."
 
-        val notification = Notification.Builder(context, CHANNEL_ID)
+        val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            Notification.Builder(context, CHANNEL_ID)
+        } else {
+            // Android 7 : pas de canaux, l'importance passe par la priorité.
+            @Suppress("DEPRECATION")
+            Notification.Builder(context).setPriority(Notification.PRIORITY_HIGH)
+        }
+        val notification = builder
             .setSmallIcon(R.drawable.ic_stat_datawatch)
             .setColor(INK)
             .setContentTitle(title)
@@ -45,6 +53,7 @@ object AlertNotifier {
     }
 
     private fun ensureChannel(manager: NotificationManager) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         if (manager.getNotificationChannel(CHANNEL_ID) != null) return
         val channel = NotificationChannel(
             CHANNEL_ID,

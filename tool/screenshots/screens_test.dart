@@ -66,6 +66,7 @@ Future<void> _shoot(
   double height = 800,
   double textScale = 1,
   bool notificationsAllowed = true,
+  bool phoneNeeded = false,
   Future<void> Function(WidgetTester)? before,
 }) async {
   tester.view.physicalSize = Size(720, height * 2);
@@ -80,7 +81,10 @@ Future<void> _shoot(
       mobileBytes: mobileBytes ?? (3.62 * _go).round(),
       granted: granted,
     ),
-    services: FakeDeviceServices(notificationsAllowed: notificationsAllowed),
+    services: FakeDeviceServices(
+      notificationsAllowed: notificationsAllowed,
+      phoneNeeded: phoneNeeded,
+    ),
     store: MemoryPlanStore(plan),
     settingsStore: MemorySettingsStore(),
     clock: () => _now,
@@ -201,10 +205,28 @@ void main() {
     (t) => _shoot(
       t,
       'forfait_seuils',
-      plan: _plan().copyWith(thresholds: {50, 80, 90, 100}),
+      plan: _plan().copyWith(thresholds: DataPlan.everyTwentyThresholds),
       height: 2000,
       notificationsAllowed: false,
       before: (t) => t.tap(find.text('Forfait').last),
+    ),
+  );
+  testWidgets(
+    'autorisation Téléphone (Android 9)',
+    (t) => _shoot(t, 'autorisation_telephone', phoneNeeded: true),
+  );
+  testWidgets(
+    'politique de confidentialité',
+    (t) => _shoot(
+      t,
+      'confidentialite',
+      plan: _plan(),
+      height: 2200,
+      before: (t) async {
+        await t.tap(find.byTooltip('Paramètres').first);
+        await t.pumpAndSettle();
+        await t.tap(find.text('Politique de confidentialité'));
+      },
     ),
   );
 }

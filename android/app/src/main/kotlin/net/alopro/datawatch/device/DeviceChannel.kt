@@ -18,12 +18,13 @@ import io.flutter.plugin.common.MethodChannel
 import net.alopro.datawatch.alerts.AlertChecker
 import net.alopro.datawatch.alerts.AlertConfig
 import net.alopro.datawatch.alerts.AlertScheduler
+import net.alopro.datawatch.usage.MobileSubscribers
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
 /**
  * Ce qui touche au système hors statistiques : permissions, écrans de
- * réglages, version, et configuration des alertes en arrière-plan.
+ * réglages, liens, version, et configuration des alertes en arrière-plan.
  */
 class DeviceChannel(
     private val activity: Activity,
@@ -34,7 +35,9 @@ class DeviceChannel(
     private val executor: ExecutorService = Executors.newSingleThreadExecutor()
     private val mainHandler = Handler(Looper.getMainLooper())
     private val context get() = activity.applicationContext
-    private var pendingPermission: MethodChannel.Result? = null
+
+    /** Demandes de permission en attente de réponse, par code de requête. */
+    private val pendingPermissions = HashMap<Int, MethodChannel.Result>()
 
     init {
         channel.setMethodCallHandler(this)
@@ -48,14 +51,20 @@ class DeviceChannel(
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
         when (call.method) {
             "notificationsAllowed" -> result.success(notificationsAllowed())
-            "requestNotificationPermission" -> requestNotificationPermission(result)
-            "openNotificationSettings" -> result.success(
-                start(
-                    Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
-                        .putExtra(Settings.EXTRA_APP_PACKAGE, activity.packageName),
-                    appDetails(activity.packageName),
-                ),
-            )
+            "requestNotificationPermission" ->
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU || notificationsAllowed()) {
+                    result.success(notificationsAllowed())
+                } else {
+                    request(Manifest.permission.POST_NOTIFICATIONS, REQUEST_NOTIFICATIONS, result)
+                }
+            "phonePermissionNeeded" -> result.success(MobileSubscribers.permissionMissing(context))
+            "requestPhonePermission" ->
+                if (!MobileSubscribers.permissionMissing(context)) {
+                    result.success(true)
+                } else {
+                    request(Manifest.permission.READ_PHONE_STATE, REQUEST_PHONE, result)
+                }
+            "openNotificationSettings" -> result.success(start(notificationSettings(), appDetails(activity.packageName)))
             "backgroundUnrestricted" -> result.success(backgroundUnrestricted())
             "openBatterySettings" -> result.success(
                 start(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS), appDetails(activity.packageName)),
@@ -63,6 +72,16 @@ class DeviceChannel(
             "openAppSettings" -> {
                 val pkg = call.argument<String>("packageName") ?: activity.packageName
                 result.success(start(appDetails(pkg)))
+            }
+            "openUrl" -> {
+                val url = call.argument<String>("url")
+                if (url == null) {
+                    result.error("BAD_ARGS", "url manquante", null)
+                } else {
+                    val uri = Uri.parse(url)
+                    val action = if (uri.scheme == "mailto") Intent.ACTION_SENDTO else Intent.ACTION_VIEW
+                    result.success(start(Intent(action, uri)))
+                }
             }
             "appVersion" -> result.success(appVersion())
             "configureAlerts" -> {
@@ -88,35 +107,43 @@ class DeviceChannel(
 
     /** À relayer depuis MainActivity.onRequestPermissionsResult. */
     fun onRequestPermissionsResult(requestCode: Int, grantResults: IntArray) {
-        if (requestCode != REQUEST_NOTIFICATIONS) return
-        val result = pendingPermission ?: return
-        pendingPermission = null
+        val result = pendingPermissions.remove(requestCode) ?: return
         result.success(grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED)
+    }
+
+    private fun request(permission: String, code: Int, result: MethodChannel.Result) {
+        if (pendingPermissions.containsKey(code)) {
+            result.error("BUSY", "Demande déjà en cours", null)
+            return
+        }
+        pendingPermissions[code] = result
+        activity.requestPermissions(arrayOf(permission), code)
     }
 
     private fun notificationsAllowed(): Boolean =
         context.getSystemService(NotificationManager::class.java).areNotificationsEnabled()
 
-    private fun requestNotificationPermission(result: MethodChannel.Result) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU || notificationsAllowed()) {
-            result.success(notificationsAllowed())
-            return
-        }
-        if (pendingPermission != null) {
-            result.error("BUSY", "Demande déjà en cours", null)
-            return
-        }
-        pendingPermission = result
-        activity.requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), REQUEST_NOTIFICATIONS)
-    }
-
     /** Vrai si Android ne restreint pas DataWatch en arrière-plan (alertes à l'heure). */
     private fun backgroundUnrestricted(): Boolean =
         context.getSystemService(PowerManager::class.java).isIgnoringBatteryOptimizations(activity.packageName)
 
+    private fun notificationSettings(): Intent =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                .putExtra(Settings.EXTRA_APP_PACKAGE, activity.packageName)
+        } else {
+            appDetails(activity.packageName)
+        }
+
     private fun appVersion(): String {
         val info = activity.packageManager.getPackageInfo(activity.packageName, 0)
-        return "${info.versionName} (${info.longVersionCode})"
+        val code = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            info.longVersionCode
+        } else {
+            @Suppress("DEPRECATION")
+            info.versionCode.toLong()
+        }
+        return "${info.versionName} ($code)"
     }
 
     private fun alertConfig(call: MethodCall) = AlertConfig(
@@ -147,5 +174,6 @@ class DeviceChannel(
     companion object {
         const val CHANNEL = "net.alopro.datawatch/device"
         private const val REQUEST_NOTIFICATIONS = 4201
+        private const val REQUEST_PHONE = 4202
     }
 }

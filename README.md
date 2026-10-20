@@ -72,18 +72,34 @@ lib/
   ui/          thème « Réservoir », en-têtes, composants et écrans
 ```
 
+## Choix validés
+
+- **Unités** : 1 Go = 1 024 Mo (`lib/core/units.dart`).
+- **Alertes** : une notification tous les 20 % par défaut (20 à 100 %) ; les
+  seuils 50 · 80 · 100 % du cahier des charges restent proposés en un geste.
+- **Double SIM** : les données mobiles additionnent toutes les cartes SIM ;
+  le forfait déclaré est comparé à ce total.
+- **Android 7.0 minimum** (`minSdk 24`, le minimum recommandé par Flutter).
+  Sur Android 9 et avant, compter les données mobiles exige l'autorisation
+  « Téléphone » (identifiant de chaque SIM) : une étape dédiée l'explique au
+  premier lancement. Elle n'est jamais demandée à partir d'Android 10.
+
 ## Limites connues
 
-- **Double SIM** : Android 10+ ne permet pas à une application ordinaire de
-  distinguer les SIM. Les données mobiles sont le total de toutes les SIM.
-- **Granularité** : Android compte par tranches d'environ deux heures. Le début
-  d'une période peut inclure un peu de consommation antérieure.
+- **Granularité** : Android compte par tranches d'environ deux heures ; une
+  période qui commence au milieu d'une tranche en reçoit une part au prorata.
 - **Estimation** : le volume restant est calculé à partir du forfait déclaré ;
   ce n'est pas le solde officiel de l'opérateur.
 - **Applications masquées** : sans `QUERY_ALL_PACKAGES` (restreinte sur le Play
   Store), les paquets sans icône dans le lanceur sont regroupés dans
   « Autres services ».
-- **Android 10 minimum** (`minSdk 29`).
+
+## Confidentialité
+
+La version de publication ne demande pas l'accès à Internet. La politique de
+confidentialité est dans l'application (Paramètres) et en page web à publier
+sur alopro.net : `docs/politique-de-confidentialite.html`. Contact :
+hello@alopro.net.
 
 ## Polices
 

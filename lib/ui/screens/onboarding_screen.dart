@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../app/app_controller.dart';
 import '../../app/app_scope.dart';
 import '../theme/tokens.dart';
 import '../theme/typography.dart';
@@ -37,9 +38,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.dw;
-    final t = Theme.of(context).textTheme;
     final controller = AppScope.of(context);
+    // Android 9 et avant : une seconde autorisation, après l'accès aux données.
+    final phoneStep =
+        controller.usageAccessGranted && controller.phonePermissionNeeded;
 
     return Scaffold(
       body: SafeArea(
@@ -56,74 +58,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   children: [
                     const _Illustration(),
                     const SizedBox(height: 24),
-                    const DwOverline('Accès nécessaire'),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Voyez où partent vos données.',
-                      style: DwFonts.style(
-                        DwFonts.display,
-                        34,
-                        700,
-                        height: 1.04,
-                        letterSpacing: -1.2,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      'Pour compter ce que consomme chaque application, DataWatch a besoin de l’accès « Données d’utilisation » d’Android.',
-                      style: t.bodyLarge!.copyWith(color: c.textSecondary),
-                    ),
-                    const SizedBox(height: 20),
-                    const _Reassurance(
-                      icon: Icons.lock_outline_rounded,
-                      title: 'Tout reste sur votre téléphone',
-                      subtitle:
-                          'Aucune statistique n’est envoyée sur Internet.',
-                    ),
-                    const SizedBox(height: 14),
-                    const _Reassurance(
-                      icon: Icons.verified_user_outlined,
-                      title: 'Ni SMS, ni messages lus',
-                      subtitle: 'Seuls les volumes de données sont comptés.',
-                    ),
-                    const SizedBox(height: 14),
-                    const _Reassurance(
-                      icon: Icons.settings_backup_restore_rounded,
-                      title: 'Réversible à tout moment',
-                      subtitle: 'Depuis les paramètres d’Android.',
-                    ),
-                    const Spacer(),
-                    const SizedBox(height: 20),
-                    if (_sentToSettings) ...[
-                      DwCard(
-                        color: c.warningSoft,
-                        padding: const EdgeInsets.all(14),
-                        radius: DwRadius.md,
-                        child: Text(
-                          'L’accès n’est pas encore accordé. Dans la liste, touchez DataWatch puis activez l’autorisation.',
-                          style: t.bodyMedium!.copyWith(color: c.text),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                    ],
-                    FilledButton.icon(
-                      onPressed: _openSettings,
-                      iconAlignment: IconAlignment.end,
-                      icon: Icon(
-                        Icons.open_in_new_rounded,
-                        size: 18,
-                        color: c.accent,
-                      ),
-                      label: const Text('Ouvrir les paramètres Android'),
-                    ),
-                    const SizedBox(height: 4),
-                    TextButton(
-                      onPressed: controller.recheckAccess,
-                      child: Text(
-                        'J’ai accordé l’accès',
-                        style: TextStyle(color: c.textSecondary),
-                      ),
-                    ),
+                    if (phoneStep)
+                      ..._phoneStep(controller)
+                    else
+                      ..._usageStep(controller),
                   ],
                 ),
               ),
@@ -133,6 +71,116 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       ),
     );
   }
+
+  List<Widget> _usageStep(AppController controller) {
+    final c = context.dw;
+    final t = Theme.of(context).textTheme;
+    return [
+      DwOverline(
+        controller.phonePermissionNeeded ? 'Étape 1 sur 2' : 'Accès nécessaire',
+      ),
+      const SizedBox(height: 8),
+      Text('Voyez où partent vos données.', style: _titleStyle),
+      const SizedBox(height: 10),
+      Text(
+        'Pour compter ce que consomme chaque application, DataWatch a besoin de l’accès « Données d’utilisation » d’Android.',
+        style: t.bodyLarge!.copyWith(color: c.textSecondary),
+      ),
+      const SizedBox(height: 20),
+      const _Reassurance(
+        icon: Icons.lock_outline_rounded,
+        title: 'Tout reste sur votre téléphone',
+        subtitle: 'Aucune statistique n’est envoyée sur Internet.',
+      ),
+      const SizedBox(height: 14),
+      const _Reassurance(
+        icon: Icons.verified_user_outlined,
+        title: 'Ni SMS, ni messages lus',
+        subtitle: 'Seuls les volumes de données sont comptés.',
+      ),
+      const SizedBox(height: 14),
+      const _Reassurance(
+        icon: Icons.settings_backup_restore_rounded,
+        title: 'Réversible à tout moment',
+        subtitle: 'Depuis les paramètres d’Android.',
+      ),
+      const Spacer(),
+      const SizedBox(height: 20),
+      if (_sentToSettings) ...[
+        DwCard(
+          color: c.warningSoft,
+          padding: const EdgeInsets.all(14),
+          radius: DwRadius.md,
+          child: Text(
+            'L’accès n’est pas encore accordé. Dans la liste, touchez DataWatch puis activez l’autorisation.',
+            style: t.bodyMedium!.copyWith(color: c.text),
+          ),
+        ),
+        const SizedBox(height: 12),
+      ],
+      FilledButton.icon(
+        onPressed: _openSettings,
+        iconAlignment: IconAlignment.end,
+        icon: Icon(Icons.open_in_new_rounded, size: 18, color: c.accent),
+        label: const Text('Ouvrir les paramètres Android'),
+      ),
+      const SizedBox(height: 4),
+      TextButton(
+        onPressed: controller.recheckAccess,
+        child: Text(
+          'J’ai accordé l’accès',
+          style: TextStyle(color: c.textSecondary),
+        ),
+      ),
+    ];
+  }
+
+  List<Widget> _phoneStep(AppController controller) {
+    final c = context.dw;
+    final t = Theme.of(context).textTheme;
+    return [
+      const DwOverline('Étape 2 sur 2'),
+      const SizedBox(height: 8),
+      Text('Reconnaître vos cartes SIM.', style: _titleStyle),
+      const SizedBox(height: 10),
+      Text(
+        'Sur votre version d’Android, compter les données mobiles demande l’autorisation « Téléphone ». DataWatch s’en sert uniquement pour identifier vos cartes SIM auprès des compteurs d’Android.',
+        style: t.bodyLarge!.copyWith(color: c.textSecondary),
+      ),
+      const SizedBox(height: 20),
+      const _Reassurance(
+        icon: Icons.phone_disabled_outlined,
+        title: 'Aucun appel passé ni lu',
+        subtitle: 'Ni journal d’appels, ni numéro de téléphone.',
+      ),
+      const SizedBox(height: 14),
+      const _Reassurance(
+        icon: Icons.sim_card_outlined,
+        title: 'Toutes vos cartes additionnées',
+        subtitle: 'Les données mobiles de chaque SIM sont comptées.',
+      ),
+      const SizedBox(height: 14),
+      const _Reassurance(
+        icon: Icons.lock_outline_rounded,
+        title: 'Tout reste sur votre téléphone',
+        subtitle: 'Rien n’est envoyé sur Internet.',
+      ),
+      const Spacer(),
+      const SizedBox(height: 20),
+      FilledButton(
+        onPressed: controller.requestPhonePermission,
+        child: const Text('Autoriser'),
+      ),
+    ];
+  }
+
+  TextStyle get _titleStyle => DwFonts.style(
+    DwFonts.display,
+    34,
+    700,
+    height: 1.04,
+    letterSpacing: -1.2,
+  );
 }
 
 class _Reassurance extends StatelessWidget {

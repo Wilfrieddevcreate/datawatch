@@ -19,9 +19,10 @@ android {
         applicationId = "net.alopro.datawatch"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        // Android 10+ : NetworkStatsManager accepte un subscriberId nul pour les
-        // données mobiles, ce qui évite la permission READ_PHONE_STATE.
-        minSdk = 29
+        // Android 7.0 : le minimum recommandé par Flutter, pour toucher aussi les
+        // téléphones d'entrée de gamme. Avant Android 10, les données mobiles
+        // demandent l'autorisation « Téléphone » (voir MobileSubscribers.kt).
+        minSdk = 24
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName

@@ -7,6 +7,12 @@
         android:name="android.permission.PACKAGE_USAGE_STATS"
         tools:ignore="ProtectedPermissions" />
 
+    <!-- Android 9 et avant : compter les données mobiles exige l'identifiant de
+         chaque SIM. Inutile (et jamais demandée) à partir d'Android 10. -->
+    <uses-permission
+        android:name="android.permission.READ_PHONE_STATE"
+        android:maxSdkVersion="28" />
+
     <!-- Notifications des seuils d'alerte (demandée à l'exécution sur Android 13+). -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 

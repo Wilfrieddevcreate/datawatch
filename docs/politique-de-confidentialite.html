@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DataWatch · Politique de confidentialité</title>
+<meta name="description" content="Politique de confidentialité de l’application Android DataWatch, éditée par Alopro.">
+<style>
+  :root {
+    --bg: #EEF0F3; --surface: #FFFFFF; --text: #0F1218; --muted: #5A6170;
+    --line: #DDE1E7; --accent: #C6F135; --link: #3B5BDB;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0B0D11; --surface: #151922; --text: #F2F4F7; --muted: #9AA3B2;
+      --line: #262C38; --link: #8DA2FF;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  main { max-width: 720px; margin: 0 auto; padding: 48px 16px 64px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; }
+  .mark {
+    width: 28px; height: 28px; border-radius: 8px; background: #10131A;
+    display: grid; place-items: end center; padding: 5px 9px;
+  }
+  .mark span { display: block; width: 100%; height: 45%; border-radius: 3px; background: var(--accent); }
+  h1 { font-size: clamp(2rem, 6vw, 2.75rem); line-height: 1.05; letter-spacing: -0.03em; margin: 28px 0 12px; }
+  .lead { font-size: 1.125rem; color: var(--muted); margin: 0 0 32px; }
+  section { background: var(--surface); border-radius: 20px; padding: 8px 24px; }
+  article { padding: 18px 0; border-top: 1px solid var(--line); }
+  article:first-child { border-top: 0; }
+  h2 { font-size: 1.05rem; margin: 0 0 6px; }
+  p { margin: 0; color: var(--muted); }
+  a { color: var(--link); }
+  footer { margin-top: 24px; color: var(--muted); font-size: 0.875rem; }
+</style>
+</head>
+<body>
+<main>
+  <div class="brand"><div class="mark" aria-hidden="true"><span></span></div>DataWatch</div>
+  <h1>Politique de confidentialité</h1>
+  <p class="lead">DataWatch fonctionne entièrement sur votre téléphone. Aucun compte n’est demandé et aucune statistique n’est envoyée à un serveur.</p>
+
+  <section>
+    <article>
+      <h2>Ce que l’application lit</h2>
+      <p>Avec l’autorisation « Accès aux données d’utilisation », DataWatch lit les volumes de données mobiles et Wi-Fi comptés par Android pour chaque application, ainsi que le nom et l’icône des applications installées.</p>
+    </article>
+    <article>
+      <h2>Sur Android 9 et avant</h2>
+      <p>Ces versions exigent l’autorisation « Téléphone » pour compter les données mobiles. DataWatch s’en sert uniquement pour identifier vos cartes SIM auprès des compteurs d’Android. Il ne passe aucun appel et ne lit ni votre journal d’appels, ni votre numéro.</p>
+    </article>
+    <article>
+      <h2>Ce qu’elle ne lit pas</h2>
+      <p>DataWatch ne lit ni vos SMS, ni vos messages, ni vos contacts, ni le contenu de vos échanges, ni votre position. Il ne connaît pas votre solde chez l’opérateur.</p>
+    </article>
+    <article>
+      <h2>Ce qui est enregistré</h2>
+      <p>Le forfait que vous déclarez, vos seuils d’alerte, vos préférences d’affichage et la liste des alertes déjà envoyées. Ces informations restent sur votre téléphone.</p>
+    </article>
+    <article>
+      <h2>Aucun envoi, aucun partage</h2>
+      <p>DataWatch ne demande pas l’autorisation d’accéder à Internet : il ne peut rien transmettre. Aucune donnée n’est partagée avec des tiers ni utilisée à des fins publicitaires, et l’application ne contient ni publicité, ni outil de mesure d’audience.</p>
+    </article>
+    <article>
+      <h2>Vos choix</h2>
+      <p>Vous pouvez retirer les autorisations et les notifications à tout moment dans les paramètres d’Android, et tout effacer avec « Effacer les données locales » dans l’application. Désinstaller DataWatch supprime aussi ses données.</p>
+    </article>
+    <article>
+      <h2>Éditeur et contact</h2>
+      <p>DataWatch est édité par Alopro. Pour toute question sur cette politique ou sur vos données : <a href="mailto:hello@alopro.net">hello@alopro.net</a> · <a href="https://alopro.net">alopro.net</a></p>
+    </article>
+  </section>
+
+  <footer>Dernière mise à jour : 20 octobre 2026</footer>
+</main>
+</body>
+</html>
