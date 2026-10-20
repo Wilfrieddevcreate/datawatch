@@ -23,6 +23,7 @@ class AppUsage {
   const AppUsage({
     required this.owner,
     required this.bytes,
+    this.uid,
     this.packageName,
     this.label,
     this.category,
@@ -30,6 +31,9 @@ class AppUsage {
 
   final UsageOwner owner;
   final int bytes;
+
+  /// Identifiant Android de l'application (null pour les regroupements).
+  final int? uid;
   final String? packageName;
   final String? label;
 
@@ -55,6 +59,9 @@ class DeviceTotals {
   final int? mobileBytes;
   final int? wifiBytes;
 }
+
+/// Fenêtre de temps en millisecondes, telle qu'envoyée au code Android.
+typedef DateRangeMs = ({int start, int end});
 
 class UsageAccessDenied implements Exception {
   const UsageAccessDenied();
@@ -112,6 +119,25 @@ class UsageSource {
     return aggregate((raw ?? const []).map(_parse));
   }
 
+  /// Consommation d'une application sur chaque fenêtre de [ranges] (un
+  /// élément par fenêtre, dans le même ordre).
+  Future<List<int>> appUsageByRange(
+    int uid,
+    NetworkKind network,
+    List<DateRangeMs> ranges,
+  ) async {
+    final raw = await _guard(
+      () => _channel.invokeListMethod<Object?>('getAppUsageByRange', {
+        'uid': uid,
+        'network': network.name,
+        'ranges': [
+          for (final r in ranges) [r.start, r.end],
+        ],
+      }),
+    );
+    return [for (final v in raw ?? const []) (v as num).toInt()];
+  }
+
   Future<Uint8List?> appIcon(String packageName, {int size = 96}) {
     return _channel.invokeMethod<Uint8List>('getAppIcon', {
       'packageName': packageName,
@@ -130,6 +156,7 @@ class UsageSource {
           : AppUsage(
               owner: row.owner,
               bytes: existing.bytes + row.bytes,
+              uid: existing.uid,
               packageName: existing.packageName,
               label: existing.label,
               category: existing.category,
@@ -148,6 +175,7 @@ class UsageSource {
         orElse: () => UsageOwner.hidden,
       ),
       bytes: rx + tx,
+      uid: (m['uid'] as num?)?.toInt(),
       packageName: m['packageName'] as String?,
       label: m['label'] as String?,
       category: m['category'] as String?,

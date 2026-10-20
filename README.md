@@ -41,21 +41,35 @@ Les PNG de secours et l'icône Play Store (`branding/`) se régénèrent avec :
 python3 tool/branding/generate_icons.py
 ```
 
+## Alertes de consommation
+
+Les seuils sont vérifiés en Kotlin par WorkManager, environ toutes les
+15 minutes, même application fermée et après un redémarrage. Flutter recopie
+le forfait et les réglages côté Android (`configureAlerts`) à chaque
+changement ; le Worker n'a donc pas besoin de Flutter pour tourner.
+
+- une seule notification par seuil et par forfait (historique remis à zéro
+  quand le forfait change) ;
+- si plusieurs seuils sont franchis d'un coup, seul le plus haut est notifié ;
+- l'autorisation de notifier (Android 13+) est demandée à l'enregistrement
+  du forfait ;
+- les paramètres signalent si l'économie d'énergie d'Android peut retarder
+  les alertes, fréquent sur les TECNO, Infinix et itel.
+
 ## Organisation
 
 ```
 android/app/src/main/kotlin/net/alopro/datawatch/
-  usage/DataUsageChannel.kt   canal Flutter ⇄ Android (thread dédié)
-  usage/NetworkUsageReader.kt requêtes NetworkStatsManager
-  usage/AppResolver.kt        uid → nom, icône, catégorie de l'application
-  usage/UsageAccess.kt        vérification de l'autorisation
+  usage/      lecture des statistiques (NetworkStatsManager), canal `usage`
+  device/     permissions, écrans de réglages, version, canal `device`
+  alerts/     configuration, vérification, notification et Worker des alertes
 
 lib/
-  core/        unités (1 Go = 1 024 Mo) et formatage français
-  domain/      forfait, calcul du restant, règles des conseils
-  data/        accès au canal natif, stockage local du forfait
-  app/         contrôleur d'état, application
-  ui/          thème « Réservoir », composants et écrans
+  core/        unités (1 Go = 1 024 Mo, affichage Auto/Mo/Go), formatage français
+  domain/      forfait, restant, rythme, conseils généraux et par application
+  data/        canaux natifs, stockage local du forfait et des paramètres
+  app/         contrôleur d'état, période précédente, synchronisation des alertes
+  ui/          thème « Réservoir », en-têtes, composants et écrans
 ```
 
 ## Limites connues

@@ -30,7 +30,9 @@ class FakeUsageSource implements UsageSource {
     DateTime start,
     DateTime end,
   ) async {
-    final scale = mobileBytes / (3707 * _mo);
+    final previous = end.isBefore(DateTime(2026, 10, 15, 8, 31));
+    final scale = mobileBytes / (3707 * _mo) * (previous ? 0.9 : 1);
+    var nextUid = 10100;
     AppUsage app(
       String label,
       String pkg,
@@ -39,6 +41,7 @@ class FakeUsageSource implements UsageSource {
       String? category,
     }) => AppUsage(
       owner: UsageOwner.app,
+      uid: nextUid++,
       bytes: ((network == NetworkKind.mobile ? mobileMo * scale : wifiMo) * _mo)
           .round(),
       packageName: pkg,
@@ -74,6 +77,17 @@ class FakeUsageSource implements UsageSource {
             .round(),
       ),
     ]);
+  }
+
+  @override
+  Future<List<int>> appUsageByRange(
+    int uid,
+    NetworkKind network,
+    List<DateRangeMs> ranges,
+  ) async {
+    // Une semaine plausible : montée vers le week-end, journée en cours partielle.
+    const mo = [96, 131, 188, 242, 315, 276, 178];
+    return [for (var i = 0; i < ranges.length; i++) mo[i % mo.length] * _mo];
   }
 
   @override

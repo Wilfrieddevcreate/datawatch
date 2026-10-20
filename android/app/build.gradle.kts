@@ -45,3 +45,8 @@ kotlin {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    // Vérification périodique des seuils d'alerte, même application fermée.
+    implementation("androidx.work:work-runtime:2.10.0")
+}

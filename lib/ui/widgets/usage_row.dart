@@ -115,6 +115,7 @@ class UsageRow extends StatelessWidget {
     this.iconSize = 40,
     this.height = 64,
     this.showDivider = true,
+    this.variation,
     this.onTap,
   });
 
@@ -130,15 +131,20 @@ class UsageRow extends StatelessWidget {
   final double iconSize;
   final double height;
   final bool showDivider;
+
+  /// Évolution par rapport à la période précédente (0,18 = +18 %).
+  final double? variation;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final c = context.dw;
     final t = Theme.of(context).textTheme;
+    final v = variation;
     return Semantics(
       label:
-          '${usage.displayName} : ${formatBytes(usage.bytes)}, ${formatShare(share)} du total',
+          '${usage.displayName} : ${formatBytes(usage.bytes)}, ${formatShare(share)} du total'
+          '${v == null ? '' : ', ${variationSentence(v)}'}',
       button: onTap != null,
       excludeSemantics: true,
       child: InkWell(
@@ -203,9 +209,18 @@ class UsageRow extends StatelessWidget {
                           ),
                     ),
                     const SizedBox(height: 2),
-                    Text(
-                      formatShare(share),
-                      style: t.bodySmall!.copyWith(color: c.textSecondary),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          formatShare(share),
+                          style: t.bodySmall!.copyWith(color: c.textSecondary),
+                        ),
+                        if (v != null) ...[
+                          const SizedBox(width: 6),
+                          VariationChip(variation: v),
+                        ],
+                      ],
                     ),
                   ],
                 ),
@@ -257,4 +272,40 @@ class DwOverline extends StatelessWidget {
     text.toUpperCase(),
     style: DwFonts.overline(color ?? context.dw.textSecondary),
   );
+}
+
+/// « ↑ 18 % » sur fond orange (hausse) ou « ↓ 12 % » sur fond vert (baisse).
+/// La flèche porte le sens : la couleur n'est jamais seule.
+class VariationChip extends StatelessWidget {
+  const VariationChip({super.key, required this.variation, this.large = false});
+
+  final double variation;
+  final bool large;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.dw;
+    final up = variation > 0;
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: large ? 10 : 6,
+        vertical: large ? 4 : 2,
+      ),
+      decoration: BoxDecoration(
+        color: up ? c.warningSoft : c.positiveSoft,
+        borderRadius: BorderRadius.circular(
+          large ? DwRadius.pill : DwRadius.xs,
+        ),
+      ),
+      child: Text(
+        formatVariation(variation),
+        style: DwFonts.style(
+          DwFonts.body,
+          large ? 12.5 : 11.5,
+          600,
+          tabular: true,
+        ).copyWith(color: up ? c.warningText : c.positiveText),
+      ),
+    );
+  }
 }

@@ -9,6 +9,7 @@ import '../theme/typography.dart';
 import '../widgets/page_header.dart';
 import '../widgets/segmented.dart';
 import '../widgets/usage_row.dart';
+import 'app_detail_screen.dart';
 
 enum AppSort {
   desc('Plus gourmandes'),
@@ -152,6 +153,12 @@ class _AppsScreenState extends State<AppsScreen> {
                         iconSize: 44,
                         height: 68,
                         showDivider: i > 0,
+                        variation: snapshot?.variationOf(apps[i], _network),
+                        onTap: apps[i].owner == UsageOwner.app
+                            ? () => Navigator.of(
+                                context,
+                              ).push(AppDetailScreen.route(apps[i]))
+                            : null,
                       ),
                   ],
                 ),

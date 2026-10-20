@@ -17,6 +17,8 @@ class DwPage extends StatefulWidget {
     this.overline,
     this.subtitle,
     this.compactTitle,
+    this.leading,
+    this.titleLeading,
     this.actions = const [],
     this.onRefresh,
     this.padding = const EdgeInsets.fromLTRB(16, 0, 16, 32),
@@ -31,6 +33,13 @@ class DwPage extends StatefulWidget {
 
   /// Titre affiché dans la barre une fois le grand titre défilé (par défaut : [title]).
   final String? compactTitle;
+
+  /// À gauche de la barre : le logo par défaut, un bouton retour sur une
+  /// page secondaire ([DwBackButton]).
+  final Widget? leading;
+
+  /// Visuel placé devant le grand titre (icône d'application…).
+  final Widget? titleLeading;
   final List<Widget> actions;
   final Future<void> Function()? onRefresh;
   final EdgeInsetsGeometry padding;
@@ -71,6 +80,7 @@ class _DwPageState extends State<DwPage> {
             title: widget.title,
             overline: widget.overline,
             subtitle: widget.subtitle,
+            leading: widget.titleLeading,
             offset: _offset,
           ),
         ),
@@ -101,6 +111,7 @@ class _DwPageState extends State<DwPage> {
               topInset: top,
               offset: offset,
               title: widget.compactTitle ?? widget.title,
+              leading: widget.leading ?? const DwMark(),
               actions: widget.actions,
             ),
           ),
@@ -115,12 +126,14 @@ class _TopBar extends StatelessWidget {
     required this.topInset,
     required this.offset,
     required this.title,
+    required this.leading,
     required this.actions,
   });
 
   final double topInset;
   final double offset;
   final String title;
+  final Widget leading;
   final List<Widget> actions;
 
   @override
@@ -142,10 +155,10 @@ class _TopBar extends StatelessWidget {
       ),
       child: NavigationToolbar(
         // La barre impose sa hauteur : on recentre le logo à sa taille propre.
-        leading: const Align(
+        leading: Align(
           alignment: Alignment.centerLeft,
           widthFactor: 1,
-          child: DwMark(),
+          child: leading,
         ),
         centerMiddle: true,
         middleSpacing: 12,
@@ -190,12 +203,14 @@ class _LargeTitle extends StatelessWidget {
     required this.title,
     required this.overline,
     required this.subtitle,
+    required this.leading,
     required this.offset,
   });
 
   final String title;
   final String? overline;
   final Widget? subtitle;
+  final Widget? leading;
   final ValueNotifier<double> offset;
 
   @override
@@ -214,18 +229,25 @@ class _LargeTitle extends StatelessWidget {
             ),
             const SizedBox(height: 8),
           ],
-          Semantics(
-            header: true,
-            child: Text(
-              title,
-              style: DwFonts.style(
-                DwFonts.display,
-                36,
-                700,
-                height: 1.02,
-                letterSpacing: -1.4,
-              ).copyWith(color: c.text),
-            ),
+          Row(
+            children: [
+              if (leading != null) ...[leading!, const SizedBox(width: 14)],
+              Expanded(
+                child: Semantics(
+                  header: true,
+                  child: Text(
+                    title,
+                    style: DwFonts.style(
+                      DwFonts.display,
+                      36,
+                      700,
+                      height: 1.02,
+                      letterSpacing: -1.4,
+                    ).copyWith(color: c.text),
+                  ),
+                ),
+              ),
+            ],
           ),
           if (subtitle != null) ...[
             const SizedBox(height: 8),
@@ -343,6 +365,20 @@ class DwHeaderButton extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+}
+
+/// Retour à l'écran précédent, au style des boutons de l'en-tête.
+class DwBackButton extends StatelessWidget {
+  const DwBackButton({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return DwHeaderButton(
+      icon: Icons.arrow_back_rounded,
+      tooltip: 'Retour',
+      onPressed: () => Navigator.of(context).maybePop(),
     );
   }
 }

@@ -12,6 +12,7 @@ import '../widgets/page_header.dart';
 import '../widgets/plan_hero_card.dart';
 import '../widgets/segmented.dart';
 import '../widgets/usage_row.dart';
+import 'app_detail_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({
@@ -129,6 +130,8 @@ class DashboardScreen extends StatelessWidget {
             apps: snapshot?.mobileApps,
             source: controller.source,
             onSeeAll: onOpenApps,
+            variationOf: (app) =>
+                snapshot?.variationOf(app, NetworkKind.mobile),
           ),
         ],
       ],
@@ -241,11 +244,13 @@ class _TopApps extends StatelessWidget {
     required this.apps,
     required this.source,
     required this.onSeeAll,
+    required this.variationOf,
   });
 
   final List<AppUsage>? apps;
   final UsageSource source;
   final VoidCallback onSeeAll;
+  final double? Function(AppUsage) variationOf;
 
   @override
   Widget build(BuildContext context) {
@@ -305,6 +310,11 @@ class _TopApps extends StatelessWidget {
                 source: source,
                 share: total == 0 ? 0 : app.bytes / total,
                 barFraction: app.bytes / max,
+                variation: variationOf(app),
+                onTap: app.owner == UsageOwner.app
+                    ? () =>
+                          Navigator.of(context).push(AppDetailScreen.route(app))
+                    : null,
               ),
         ],
       ),

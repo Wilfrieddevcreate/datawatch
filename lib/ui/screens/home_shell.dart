@@ -5,6 +5,7 @@ import '../../domain/data_plan.dart';
 import '../theme/tokens.dart';
 import '../widgets/page_header.dart';
 import 'apps_screen.dart';
+import 'settings_screen.dart';
 import 'dashboard_screen.dart';
 import 'plan_screen.dart';
 import 'tips_screen.dart';
@@ -40,7 +41,14 @@ class _HomeShellState extends State<HomeShell> {
         _ => null,
       },
     );
-    final actions = [alerts];
+    final settings = DwHeaderButton(
+      icon: Icons.settings_outlined,
+      tooltip: 'Paramètres',
+      onPressed: () => Navigator.of(
+        context,
+      ).push(SettingsScreen.route(onOpenPlan: () => _goTo(_plan))),
+    );
+    final actions = [alerts, settings];
 
     return Scaffold(
       body: IndexedStack(

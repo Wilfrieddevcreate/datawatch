@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../app/app_controller.dart';
 import '../../app/app_scope.dart';
 import '../../core/format.dart';
 import '../../core/units.dart';
@@ -31,7 +32,9 @@ enum Validity {
 
 /// Volume saisi (« 5 », « 1,5 », « 5 120 ») converti en octets.
 int? parseVolume(String text, VolumeUnit unit) {
-  final cleaned = text.replaceAll(RegExp(r'[\s ]'), '').replaceAll(',', '.');
+  final cleaned = text
+      .replaceAll(RegExp(r'[\s\u00A0]'), '')
+      .replaceAll(',', '.');
   final value = double.tryParse(cleaned);
   if (value == null || value <= 0) return null;
   final factor = unit == VolumeUnit.go
@@ -235,7 +238,74 @@ class _PlanScreenState extends State<PlanScreen> {
     FocusScope.of(context).unfocus();
     await controller.savePlan(plan);
     messenger.showSnackBar(SnackBar(content: Text(message)));
+    // Moment le plus parlant pour demander l'autorisation de notifier :
+    // l'utilisateur vient de choisir ses seuils (Android 13+).
+    if (controller.settings.notificationsEnabled &&
+        plan.thresholds.isNotEmpty) {
+      await controller.ensureNotificationPermission();
+    }
     widget.onSaved();
+  }
+
+  Future<void> _addThreshold() async {
+    final existing = {...DataPlan.defaultThresholds, ..._thresholds};
+    final bytes = _volumeBytes;
+    var value = existing.contains(90) ? 70 : 90;
+    final picked = await showDialog<int>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setLocal) {
+          final t = Theme.of(context).textTheme;
+          final taken = existing.contains(value);
+          return AlertDialog(
+            title: const Text('Nouveau seuil'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  '$value$nbsp%',
+                  style: DwFonts.style(
+                    DwFonts.display,
+                    40,
+                    700,
+                    letterSpacing: -1.2,
+                  ),
+                ),
+                Slider(
+                  value: value.toDouble(),
+                  min: 10,
+                  max: 95,
+                  divisions: 17,
+                  label: '$value$nbsp%',
+                  onChanged: (v) => setLocal(() => value = v.round()),
+                ),
+                Text(
+                  taken
+                      ? 'Ce seuil existe déjà.'
+                      : bytes == null
+                      ? 'du volume déclaré'
+                      : 'soit ${formatBytes(bytes * value ~/ 100)} consommés',
+                  style: t.bodyMedium!.copyWith(
+                    color: context.dw.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Annuler'),
+              ),
+              TextButton(
+                onPressed: taken ? null : () => Navigator.pop(context, value),
+                child: const Text('Ajouter'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+    if (picked != null) setState(() => _thresholds = {..._thresholds, picked});
   }
 
   Future<void> _restartNow() async {
@@ -457,8 +527,12 @@ class _PlanScreenState extends State<PlanScreen> {
         _Section(
           title: 'Seuils d’alerte',
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              for (final pct in DataPlan.defaultThresholds.toList()..sort())
+              for (final pct in ({
+                ...DataPlan.defaultThresholds,
+                ..._thresholds,
+              }.toList()..sort()))
                 _ThresholdRow(
                   percent: pct,
                   amount: bytes == null
@@ -470,7 +544,29 @@ class _PlanScreenState extends State<PlanScreen> {
                         ? ({..._thresholds, pct})
                         : (_thresholds.where((t) => t != pct).toSet());
                   }),
+                  // Les seuils ajoutés se retirent ; ceux par défaut se désactivent.
+                  onRemove: DataPlan.defaultThresholds.contains(pct)
+                      ? null
+                      : () => setState(
+                          () => _thresholds = _thresholds
+                              .where((t) => t != pct)
+                              .toSet(),
+                        ),
                 ),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: _addThreshold,
+                  style: TextButton.styleFrom(
+                    foregroundColor: c.wifi,
+                    padding: EdgeInsets.zero,
+                  ),
+                  icon: const Icon(Icons.add_rounded, size: 20),
+                  label: const Text('Ajouter un seuil'),
+                ),
+              ),
+              const SizedBox(height: 4),
+              _AlertsStatus(controller: controller),
             ],
           ),
         ),
@@ -703,12 +799,14 @@ class _ThresholdRow extends StatelessWidget {
     required this.amount,
     required this.enabled,
     required this.onChanged,
+    this.onRemove,
   });
 
   final int percent;
   final String? amount;
   final bool enabled;
   final ValueChanged<bool> onChanged;
+  final VoidCallback? onRemove;
 
   @override
   Widget build(BuildContext context) {
@@ -725,7 +823,7 @@ class _ThresholdRow extends StatelessWidget {
         child: Row(
           children: [
             SizedBox(
-              width: 64,
+              width: 76,
               child: Text(
                 '$percent$nbsp%',
                 style: DwFonts.style(
@@ -756,9 +854,76 @@ class _ThresholdRow extends StatelessWidget {
                       style: t.bodyMedium!.copyWith(color: c.textSecondary),
                     ),
             ),
-            Switch(value: enabled, onChanged: onChanged),
+            if (onRemove == null)
+              Switch(value: enabled, onChanged: onChanged)
+            else
+              IconButton(
+                onPressed: onRemove,
+                tooltip: 'Retirer le seuil de $percent %',
+                icon: Icon(Icons.close_rounded, color: c.textSecondary),
+              ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Ce qui empêcherait les alertes de s'afficher, avec le moyen d'y remédier.
+class _AlertsStatus extends StatelessWidget {
+  const _AlertsStatus({required this.controller});
+  final AppController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.dw;
+    final t = Theme.of(context).textTheme;
+    final settings = controller.settings;
+
+    if (controller.alertsActive) {
+      return Text(
+        'Une seule notification par seuil et par forfait, vérifiée environ toutes les 15 minutes.',
+        style: t.bodySmall!.copyWith(color: c.textSecondary),
+      );
+    }
+    final (text, action, onPressed) = !settings.notificationsEnabled
+        ? (
+            'Les alertes sont désactivées dans les paramètres.',
+            'Activer',
+            () => controller.setNotificationsEnabled(true),
+          )
+        : (
+            'Android bloque les notifications de DataWatch.',
+            'Autoriser',
+            () async {
+              if (!await controller.ensureNotificationPermission()) {
+                await controller.openNotificationSettings();
+              }
+            },
+          );
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 6, 6, 6),
+      decoration: BoxDecoration(
+        color: c.warningSoft,
+        borderRadius: BorderRadius.circular(DwRadius.md),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.notifications_off_outlined,
+            size: 18,
+            color: c.warningText,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(text, style: t.bodyMedium!.copyWith(color: c.text)),
+          ),
+          TextButton(
+            onPressed: onPressed,
+            style: TextButton.styleFrom(foregroundColor: c.warningText),
+            child: Text(action),
+          ),
+        ],
       ),
     );
   }

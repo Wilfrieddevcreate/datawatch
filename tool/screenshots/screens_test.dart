@@ -11,11 +11,13 @@ import 'package:datawatch/app/app.dart';
 import 'package:datawatch/app/app_controller.dart';
 import 'package:datawatch/core/units.dart';
 import 'package:datawatch/data/plan_store.dart';
+import 'package:datawatch/data/settings_store.dart';
 import 'package:datawatch/domain/data_plan.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'fake_device_services.dart';
 import 'fake_usage_source.dart';
 
 const _go = DataUnits.bytesPerGo;
@@ -63,6 +65,7 @@ Future<void> _shoot(
   Brightness brightness = Brightness.light,
   double height = 800,
   double textScale = 1,
+  bool notificationsAllowed = true,
   Future<void> Function(WidgetTester)? before,
 }) async {
   tester.view.physicalSize = Size(720, height * 2);
@@ -77,7 +80,9 @@ Future<void> _shoot(
       mobileBytes: mobileBytes ?? (3.62 * _go).round(),
       granted: granted,
     ),
+    services: FakeDeviceServices(notificationsAllowed: notificationsAllowed),
     store: MemoryPlanStore(plan),
+    settingsStore: MemorySettingsStore(),
     clock: () => _now,
   );
   await tester.pumpWidget(
@@ -151,6 +156,55 @@ void main() {
       'conseils',
       plan: _plan(),
       before: (t) => t.tap(find.text('Conseils')),
+    ),
+  );
+  testWidgets(
+    'détail d’une application',
+    (t) => _shoot(
+      t,
+      'detail_application',
+      plan: _plan(),
+      height: 1500,
+      before: (t) async {
+        await t.tap(find.text('Applis'));
+        await t.pumpAndSettle();
+        await t.tap(find.text('TikTok'));
+      },
+    ),
+  );
+  testWidgets(
+    'paramètres',
+    (t) => _shoot(
+      t,
+      'parametres',
+      plan: _plan(),
+      height: 1700,
+      before: (t) => t.tap(find.byTooltip('Paramètres').first),
+    ),
+  );
+  testWidgets(
+    'mesure expliquée',
+    (t) => _shoot(
+      t,
+      'info_mesure',
+      plan: _plan(),
+      height: 1400,
+      before: (t) async {
+        await t.tap(find.byTooltip('Paramètres').first);
+        await t.pumpAndSettle();
+        await t.tap(find.text('Comment la mesure fonctionne'));
+      },
+    ),
+  );
+  testWidgets(
+    'forfait, seuils et notifications bloquées',
+    (t) => _shoot(
+      t,
+      'forfait_seuils',
+      plan: _plan().copyWith(thresholds: {50, 80, 90, 100}),
+      height: 2000,
+      notificationsAllowed: false,
+      before: (t) => t.tap(find.text('Forfait').last),
     ),
   );
 }

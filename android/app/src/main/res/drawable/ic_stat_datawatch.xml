@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Petite icône des notifications : le réservoir en une couleur (teintée par Android). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2"
+        android:fillColor="#00000000"
+        android:pathData="M10,3 H14 A4,4 0 0 1 18,7 V17 A4,4 0 0 1 14,21 H10 A4,4 0 0 1 6,17 V7 A4,4 0 0 1 10,3 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M9.5,11 H14.5 A0.5,0.5 0 0 1 15,11.5 V16.5 A1.5,1.5 0 0 1 13.5,18 H10.5 A1.5,1.5 0 0 1 9,16.5 V11.5 A0.5,0.5 0 0 1 9.5,11 Z" />
+</vector>

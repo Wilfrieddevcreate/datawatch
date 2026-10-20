@@ -68,4 +68,36 @@ class NetworkUsageReader(context: Context) {
             .map { (uid, bytes) -> UidUsage(uid, bytes[0], bytes[1]) }
             .filter { it.rxBytes + it.txBytes > 0 }
     }
+
+    /**
+     * Consommation d'un uid répartie sur des fenêtres [début, fin[ (des jours,
+     * pour le graphique). Une tranche Android à cheval sur deux fenêtres est
+     * partagée au prorata du temps.
+     */
+    fun usageForUidByRange(network: Network, uid: Int, ranges: List<LongArray>): List<Long> {
+        if (ranges.isEmpty()) return emptyList()
+        val out = LongArray(ranges.size)
+        val details = stats.queryDetailsForUid(
+            network.type,
+            null,
+            ranges.minOf { it[0] },
+            ranges.maxOf { it[1] },
+            uid,
+        )
+        try {
+            val bucket = NetworkStats.Bucket()
+            while (details.hasNextBucket()) {
+                details.getNextBucket(bucket)
+                val bytes = bucket.rxBytes + bucket.txBytes
+                val span = (bucket.endTimeStamp - bucket.startTimeStamp).coerceAtLeast(1)
+                ranges.forEachIndexed { i, range ->
+                    val overlap = minOf(bucket.endTimeStamp, range[1]) - maxOf(bucket.startTimeStamp, range[0])
+                    if (overlap > 0) out[i] += bytes * overlap / span
+                }
+            }
+        } finally {
+            details.close()
+        }
+        return out.toList()
+    }
 }

@@ -56,6 +56,17 @@ class DataUsageChannel(
                     reader.usageByUid(network, start, end).map { resolver.describe(it) }
                 }
             }
+            "getAppUsageByRange" -> {
+                val network = NetworkUsageReader.Network.fromName(call.argument<String>("network"))
+                val uid = call.argument<Int>("uid")
+                val ranges = call.argument<List<List<Number>>>("ranges")
+                if (uid == null || ranges == null) {
+                    result.error("BAD_ARGS", "uid ou ranges manquant", null)
+                    return
+                }
+                val windows = ranges.map { longArrayOf(it[0].toLong(), it[1].toLong()) }
+                runAsync(result) { reader.usageForUidByRange(network, uid, windows) }
+            }
             "getAppIcon" -> {
                 val packageName = call.argument<String>("packageName")
                 if (packageName == null) {

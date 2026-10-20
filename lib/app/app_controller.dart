@@ -1,6 +1,13 @@
-import 'package:flutter/foundation.dart';
+import 'dart:async';
 
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
+
+import '../core/format.dart';
+import '../core/units.dart';
+import '../data/device_services.dart';
 import '../data/plan_store.dart';
+import '../data/settings_store.dart';
 import '../data/usage_source.dart';
 import '../domain/data_plan.dart';
 
@@ -18,6 +25,8 @@ class DateRange {
   const DateRange(this.start, this.end);
   final DateTime start;
   final DateTime end;
+
+  Duration get length => end.difference(start);
 }
 
 /// Statistiques d'une période, telles que mesurées par Android.
@@ -29,6 +38,8 @@ class UsageSnapshot {
     required this.mobileApps,
     required this.wifiApps,
     required this.fetchedAt,
+    this.previousMobile,
+    this.previousWifi,
   });
 
   final UsagePeriod period;
@@ -37,6 +48,67 @@ class UsageSnapshot {
   final List<AppUsage> mobileApps;
   final List<AppUsage> wifiApps;
   final DateTime fetchedAt;
+
+  /// Consommation par application sur la période précédente comparable
+  /// (clé : [AppUsage.key]). Null si Android ne l'a pas fournie.
+  final Map<String, int>? previousMobile;
+  final Map<String, int>? previousWifi;
+
+  /// Évolution d'une application par rapport à la période précédente.
+  double? variationOf(AppUsage app, NetworkKind network) {
+    final previous = network == NetworkKind.mobile
+        ? previousMobile
+        : previousWifi;
+    return variation(app.bytes, previous?[app.key]);
+  }
+
+  /// Total affiché pour un réseau : le compteur de l'appareil, ou la somme
+  /// des applications s'il manque.
+  int totalFor(NetworkKind network) {
+    final apps = network == NetworkKind.mobile ? mobileApps : wifiApps;
+    final sum = apps.fold<int>(0, (s, a) => s + a.bytes);
+    final device = network == NetworkKind.mobile
+        ? totals.mobileBytes
+        : totals.wifiBytes;
+    return device != null && device >= sum ? device : sum;
+  }
+}
+
+/// Variation relative entre deux volumes. Null quand la référence est trop
+/// faible pour être parlante (moins de 1 Mo) : on n'affiche pas « +5000 % ».
+double? variation(int current, int? previous) {
+  if (previous == null || previous < DataUnits.bytesPerMo) return null;
+  return (current - previous) / previous;
+}
+
+/// Période comparable qui précède [range] : la veille à la même heure, les
+/// 7 jours d'avant, le même nombre de jours du mois précédent, ou la même
+/// durée avant le début du forfait.
+DateRange? previousRangeFor(UsagePeriod period, DateRange range) {
+  if (range.length <= Duration.zero) return null;
+  DateTime shiftDays(DateTime d, int days) =>
+      DateTime(d.year, d.month, d.day - days, d.hour, d.minute, d.second);
+  switch (period) {
+    case UsagePeriod.today:
+      return DateRange(shiftDays(range.start, 1), shiftDays(range.end, 1));
+    case UsagePeriod.week:
+      return DateRange(shiftDays(range.start, 7), shiftDays(range.end, 7));
+    case UsagePeriod.month:
+      final end = range.end;
+      final lastDayOfPrevious = DateTime(end.year, end.month, 0).day;
+      return DateRange(
+        DateTime(end.year, end.month - 1),
+        DateTime(
+          end.year,
+          end.month - 1,
+          end.day.clamp(1, lastDayOfPrevious),
+          end.hour,
+          end.minute,
+        ),
+      );
+    case UsagePeriod.plan:
+      return DateRange(range.start.subtract(range.length), range.start);
+  }
 }
 
 enum AccessState { unknown, denied, granted }
@@ -44,17 +116,24 @@ enum AccessState { unknown, denied, granted }
 class AppController extends ChangeNotifier {
   AppController({
     this._source = const UsageSource(),
+    this._services = const DeviceServices(),
     PlanStore? store,
+    SettingsStore? settingsStore,
     DateTime Function()? clock,
   }) : _store = store ?? PrefsPlanStore(),
+       _settingsStore = settingsStore ?? PrefsSettingsStore(),
        _clock = clock ?? DateTime.now;
 
   final UsageSource _source;
+  final DeviceServices _services;
   final PlanStore _store;
+  final SettingsStore _settingsStore;
   final DateTime Function() _clock;
 
   AccessState access = AccessState.unknown;
   DataPlan? plan;
+  AppSettings settings = const AppSettings();
+  DeviceStatus device = const DeviceStatus();
   UsagePeriod period = UsagePeriod.plan;
   UsageSnapshot? snapshot;
 
@@ -73,21 +152,52 @@ class AppController extends ChangeNotifier {
   UsagePeriod get effectivePeriod =>
       period == UsagePeriod.plan && plan == null ? UsagePeriod.week : period;
 
+  /// Les alertes peuvent-elles réellement s'afficher ?
+  bool get alertsActive =>
+      settings.notificationsEnabled && device.notificationsAllowed;
+
   Future<void> init() async {
     plan = await _store.load();
+    settings = await _settingsStore.load();
+    displayUnits = settings.units;
+    await _syncAlerts();
     await recheckAccess();
   }
 
-  /// À appeler au lancement et à chaque retour au premier plan (l'accès a pu
-  /// être accordé ou retiré dans les paramètres Android).
+  /// À appeler au lancement et à chaque retour au premier plan : l'accès et
+  /// les autorisations ont pu changer dans les paramètres Android.
   Future<void> recheckAccess() async {
     final granted = await _source.hasUsageAccess();
     access = granted ? AccessState.granted : AccessState.denied;
-    notifyListeners();
+    await refreshDeviceStatus();
     if (granted) await refresh();
   }
 
+  Future<void> refreshDeviceStatus() async {
+    device = await _guardDevice(_services.status, fallback: device);
+    notifyListeners();
+  }
+
   Future<void> openUsageSettings() => _source.openUsageAccessSettings();
+  Future<void> openNotificationSettings() =>
+      _guardDevice(_services.openNotificationSettings, fallback: null);
+  Future<void> openBatterySettings() =>
+      _guardDevice(_services.openBatterySettings, fallback: null);
+  Future<void> openAppSettings(String packageName) => _guardDevice(
+    () => _services.openAppSettings(packageName),
+    fallback: null,
+  );
+
+  /// Demande l'autorisation de notifier si besoin. Vrai si accordée.
+  Future<bool> ensureNotificationPermission() async {
+    if (device.notificationsAllowed) return true;
+    await _guardDevice(
+      _services.requestNotificationPermission,
+      fallback: false,
+    );
+    await refreshDeviceStatus();
+    return device.notificationsAllowed;
+  }
 
   Future<void> setPeriod(UsagePeriod value) async {
     if (period == value) return;
@@ -101,6 +211,7 @@ class AppController extends ChangeNotifier {
     plan = value;
     period = UsagePeriod.plan;
     notifyListeners();
+    await _syncAlerts();
     await refresh();
   }
 
@@ -109,21 +220,58 @@ class AppController extends ChangeNotifier {
     plan = null;
     planUsage = null;
     notifyListeners();
+    await _syncAlerts();
     await refresh();
   }
+
+  Future<void> setNotificationsEnabled(bool enabled) async {
+    if (enabled) await ensureNotificationPermission();
+    await _saveSettings(settings.copyWith(notificationsEnabled: enabled));
+  }
+
+  Future<void> setUnits(UnitMode units) =>
+      _saveSettings(settings.copyWith(units: units));
+
+  /// Efface tout ce que DataWatch a enregistré sur le téléphone. Les
+  /// statistiques d'Android, elles, ne sont pas touchées.
+  Future<void> clearAllData() async {
+    await _store.clear();
+    await _settingsStore.clear();
+    await _guardDevice(_services.clearAlerts, fallback: null);
+    plan = null;
+    planUsage = null;
+    settings = const AppSettings();
+    displayUnits = settings.units;
+    period = UsagePeriod.plan;
+    notifyListeners();
+    await refresh();
+  }
+
+  Future<void> _saveSettings(AppSettings value) async {
+    await _settingsStore.save(value);
+    settings = value;
+    displayUnits = value.units;
+    notifyListeners();
+    await _syncAlerts();
+  }
+
+  Future<void> _syncAlerts() => _guardDevice(
+    () => _services.configureAlerts(plan: plan, settings: settings),
+    fallback: null,
+  );
 
   DateRange rangeFor(UsagePeriod p, DateTime now) {
     final today = DateTime(now.year, now.month, now.day);
     return switch (p) {
       UsagePeriod.today => DateRange(today, now),
       UsagePeriod.week => DateRange(
-        today.subtract(const Duration(days: 6)),
+        DateTime(now.year, now.month, now.day - 6),
         now,
       ),
       UsagePeriod.month => DateRange(DateTime(now.year, now.month), now),
       UsagePeriod.plan =>
         plan == null
-            ? DateRange(today.subtract(const Duration(days: 6)), now)
+            ? DateRange(DateTime(now.year, now.month, now.day - 6), now)
             : DateRange(plan!.start, plan!.measuredUntil(now)),
     };
   }
@@ -160,6 +308,24 @@ class AppController extends ChangeNotifier {
           planRange != null &&
           shown != UsagePeriod.plan &&
           planRange.end.isAfter(planRange.start);
+
+      // La période précédente est un bonus : son échec ne bloque pas l'écran.
+      final previous = previousRangeFor(shown, range);
+      final previousMobile = previous == null
+          ? Future<Map<String, int>?>.value()
+          : _keyed(
+              _source.appUsage(
+                NetworkKind.mobile,
+                previous.start,
+                previous.end,
+              ),
+            );
+      final previousWifi = previous == null
+          ? Future<Map<String, int>?>.value()
+          : _keyed(
+              _source.appUsage(NetworkKind.wifi, previous.start, previous.end),
+            );
+
       final results = await Future.wait([
         _source.deviceTotals(range.start, range.end),
         _source.appUsage(NetworkKind.mobile, range.start, range.end),
@@ -167,6 +333,7 @@ class AppController extends ChangeNotifier {
         if (queryPlanSeparately)
           _source.deviceTotals(planRange.start, planRange.end),
       ]);
+      final previousResults = await Future.wait([previousMobile, previousWifi]);
       if (id != _requestId) return;
 
       final totals = results[0] as DeviceTotals;
@@ -177,6 +344,8 @@ class AppController extends ChangeNotifier {
         mobileApps: results[1] as List<AppUsage>,
         wifiApps: results[2] as List<AppUsage>,
         fetchedAt: now,
+        previousMobile: previousResults[0],
+        previousWifi: previousResults[1],
       );
       if (currentPlan == null) {
         planUsage = null;
@@ -190,6 +359,10 @@ class AppController extends ChangeNotifier {
         // Le forfait démarre à l'instant.
         planUsage = currentPlan.usage(0);
       }
+      // Un seuil a pu être franchi pendant que l'application était ouverte.
+      if (planUsage != null) {
+        unawaited(_guardDevice(_services.checkAlertsNow, fallback: null));
+      }
     } on UsageAccessDenied {
       if (id != _requestId) return;
       access = AccessState.denied;
@@ -201,6 +374,24 @@ class AppController extends ChangeNotifier {
         loading = false;
         notifyListeners();
       }
+    }
+  }
+
+  static Future<Map<String, int>?> _keyed(Future<List<AppUsage>> apps) => apps
+      .then<Map<String, int>?>((list) => {for (final a in list) a.key: a.bytes})
+      .catchError((Object _) => null);
+
+  /// Les services système ne doivent jamais faire échouer un écran.
+  static Future<T> _guardDevice<T>(
+    Future<T> Function() call, {
+    required T fallback,
+  }) async {
+    try {
+      return await call();
+    } on PlatformException {
+      return fallback;
+    } on MissingPluginException {
+      return fallback;
     }
   }
 }
