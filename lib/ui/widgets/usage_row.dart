@@ -23,6 +23,11 @@ class UsageOwnerIcon extends StatefulWidget {
 
   @override
   State<UsageOwnerIcon> createState() => _UsageOwnerIconState();
+
+  /// Vide le cache des icônes. Chaque test a sa propre horloge simulée : une
+  /// icône chargée dans un test précédent n'y serait jamais livrée.
+  @visibleForTesting
+  static void clearCache() => _UsageOwnerIconState._cache.clear();
 }
 
 class _UsageOwnerIconState extends State<UsageOwnerIcon> {

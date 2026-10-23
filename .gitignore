@@ -46,3 +46,7 @@ app.*.map.json
 
 # Captures générées par tool/screenshots
 /tool/screenshots/out/
+
+# Ressources générées pour la vidéo de présentation
+/tool/promo/assets/
+/tool/promo/out/

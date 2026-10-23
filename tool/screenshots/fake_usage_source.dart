@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:datawatch/core/units.dart';
@@ -8,11 +9,19 @@ const _mo = DataUnits.bytesPerMo;
 /// Source de données factice pour les captures d'écran : mêmes ordres de
 /// grandeur que la maquette, sans téléphone branché.
 class FakeUsageSource implements UsageSource {
-  FakeUsageSource({this.mobileBytes = 3707 * _mo, this.granted = true});
+  FakeUsageSource({
+    this.mobileBytes = 3707 * _mo,
+    this.granted = true,
+    this.iconDir,
+  });
 
   /// Consommation mobile renvoyée pour toute période.
   final int mobileBytes;
   final bool granted;
+
+  /// Dossier d'icônes `<paquet>.png` (vidéo de présentation). Sans dossier,
+  /// l'écran affiche le pictogramme générique.
+  final String? iconDir;
 
   @override
   Future<bool> hasUsageAccess() async => granted;
@@ -30,8 +39,18 @@ class FakeUsageSource implements UsageSource {
     DateTime start,
     DateTime end,
   ) async {
+    // Période précédente : chaque application évolue différemment.
     final previous = end.isBefore(DateTime(2026, 10, 15, 8, 31));
-    final scale = mobileBytes / (3707 * _mo) * (previous ? 0.9 : 1);
+    const before = {
+      'com.zhiliaoapp.musically': 0.85,
+      'com.google.android.youtube': 1.06,
+      'com.whatsapp': 0.96,
+      'com.facebook.katana': 1.14,
+      'com.android.chrome': 0.98,
+      'com.instagram.android': 1.43,
+    };
+    final scale = mobileBytes / (3707 * _mo);
+    double factor(String pkg) => previous ? before[pkg] ?? 1 : 1;
     var nextUid = 10100;
     AppUsage app(
       String label,
@@ -42,8 +61,12 @@ class FakeUsageSource implements UsageSource {
     }) => AppUsage(
       owner: UsageOwner.app,
       uid: nextUid++,
-      bytes: ((network == NetworkKind.mobile ? mobileMo * scale : wifiMo) * _mo)
-          .round(),
+      bytes:
+          ((network == NetworkKind.mobile
+                      ? mobileMo * scale * factor(pkg)
+                      : wifiMo * factor(pkg)) *
+                  _mo)
+              .round(),
       packageName: pkg,
       label: label,
       category: category,
@@ -61,7 +84,7 @@ class FakeUsageSource implements UsageSource {
       if (network == NetworkKind.mobile)
         AppUsage(
           owner: UsageOwner.tethering,
-          bytes: (389 * scale * _mo).round(),
+          bytes: (389 * scale * (previous ? 0.7 : 1) * _mo).round(),
         ),
       app('Facebook', 'com.facebook.katana', 287, 640, category: 'social'),
       app('Chrome', 'com.android.chrome', 164, 1250),
@@ -91,5 +114,8 @@ class FakeUsageSource implements UsageSource {
   }
 
   @override
-  Future<Uint8List?> appIcon(String packageName, {int size = 96}) async => null;
+  Future<Uint8List?> appIcon(String packageName, {int size = 96}) async {
+    final file = iconDir == null ? null : File('$iconDir/$packageName.png');
+    return file != null && file.existsSync() ? file.readAsBytesSync() : null;
+  }
 }

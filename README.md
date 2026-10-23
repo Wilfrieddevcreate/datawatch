@@ -32,6 +32,21 @@ flutter test tool/screenshots/screens_test.dart --update-goldens
 Les images arrivent dans `tool/screenshots/out/` (non versionné). Une erreur
 de mise en page fait échouer la capture concernée.
 
+## Vidéo de présentation
+
+Vidéo de 50 s en 1920 × 1080, sans son, construite à partir des vrais écrans de
+l'application. Il faut Python (PIL), Chrome, Node et ffmpeg :
+
+```sh
+python3 tool/promo/make_icons.py                               # icônes monogrammes
+flutter test tool/promo/capture_test.dart --update-goldens     # écrans de l'app
+node tool/promo/render.mjs                                     # → tool/promo/out/DataWatch-presentation.mp4
+node tool/promo/render.mjs --stills 3.6,14.9                   # images fixes pour relire le design
+```
+
+L'animation est décrite dans `tool/promo/video/index.html` : chaque image est
+une fonction du temps, le rendu est donc identique d'une machine à l'autre.
+
 ## Icône
 
 L'icône adaptative est vectorielle (`android/app/src/main/res/drawable/ic_launcher_*.xml`).

@@ -1,0 +1,638 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>DataWatch — vidéo de présentation</title>
+<style>
+  @font-face { font-family: 'Bricolage'; src: url('/assets/fonts/BricolageGrotesque.ttf'); font-weight: 200 800; }
+  @font-face { font-family: 'Geist'; src: url('/assets/fonts/Geist.ttf'); font-weight: 100 900; }
+  @font-face { font-family: 'GeistMono'; src: url('/assets/fonts/GeistMono.ttf'); font-weight: 100 900; }
+
+  :root {
+    --ink: #0B0D11; --ink2: #10131A; --surface: #151922; --line: #262C38;
+    --text: #F2F4F7; --muted: #A7AFBD; --lime: #C6F135; --orange: #FF9F5A;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1920px; height: 1080px; overflow: hidden; background: var(--ink); }
+  body { font-family: 'Geist', sans-serif; color: var(--text); -webkit-font-smoothing: antialiased; }
+
+  #stage { position: absolute; inset: 0; overflow: hidden; background: var(--ink); }
+  .abs { position: absolute; }
+
+  /* Ambiance : lueur, grille de points, grain. */
+  #glow { position: absolute; width: 1400px; height: 1400px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(198,241,53,0.13) 0%, rgba(198,241,53,0.04) 35%, transparent 65%); }
+  #grid { position: absolute; inset: -40px;
+    background-image: radial-gradient(rgba(255,255,255,0.07) 1.3px, transparent 1.8px);
+    background-size: 32px 32px;
+    -webkit-mask-image: radial-gradient(ellipse at 50% 50%, black 30%, transparent 78%); }
+  #grain { position: absolute; inset: -200px; pointer-events: none; opacity: 0.07; mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='260' height='260'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"); }
+
+  /* Typographie */
+  .over { font-family: 'GeistMono', monospace; font-size: 22px; font-weight: 500; letter-spacing: 0.2em;
+    text-transform: uppercase; color: var(--lime); }
+  .h { font-family: 'Bricolage', sans-serif; font-weight: 760; letter-spacing: -0.036em; line-height: 0.98; color: var(--text); }
+  .line { display: block; overflow: hidden; padding: 0.04em 0 0.1em; margin-bottom: -0.1em; }
+  .line > span { display: inline-block; will-change: transform; }
+  .lime { color: var(--lime); }
+  .muted { color: var(--muted); }
+
+  .feat { display: flex; align-items: center; gap: 22px; font-size: 30px; line-height: 1.3; color: #D5DAE3; }
+  .feat .dot { flex: none; width: 46px; height: 46px; border-radius: 50%; background: rgba(198,241,53,0.14);
+    display: grid; place-items: center; }
+
+  /* Téléphone */
+  #phone { position: absolute; width: 452px; height: 948px; border-radius: 74px; background: #1A1E27;
+    box-shadow: 0 0 0 2px #2E3442 inset, 0 60px 120px rgba(0,0,0,0.55), 0 20px 40px rgba(0,0,0,0.35); }
+  #phone::after { content: ''; position: absolute; inset: 0; border-radius: 74px;
+    background: linear-gradient(135deg, rgba(255,255,255,0.10), transparent 30%, transparent 70%, rgba(255,255,255,0.05)); pointer-events: none; }
+  #screen { position: absolute; left: 16px; top: 16px; width: 420px; height: 916px; border-radius: 60px; overflow: hidden; background: #EEF0F3; }
+  .shot { position: absolute; left: 0; top: 0; width: 420px; will-change: transform; }
+  .shot img { display: block; width: 420px; }
+  .nav { position: absolute; left: 0; bottom: 0; width: 420px; background-repeat: no-repeat; background-size: 420px auto; background-position: bottom; }
+  #status { position: absolute; left: 0; right: 0; top: 0; height: 34px; padding: 10px 34px 0; display: flex; justify-content: space-between;
+    font-family: 'Geist', sans-serif; font-size: 15px; font-weight: 600; color: #0F1218; z-index: 5; }
+  #status .icons { display: flex; gap: 6px; align-items: center; }
+  #cam { position: absolute; top: 12px; left: 50%; width: 20px; height: 20px; margin-left: -10px; border-radius: 50%; background: #0B0D11; z-index: 6; }
+
+  /* Cartes */
+  .card { position: absolute; background: #FFFFFF; color: #0F1218; border-radius: 28px;
+    box-shadow: 0 30px 60px rgba(0,0,0,0.45), 0 8px 18px rgba(0,0,0,0.25); }
+  .pill { position: absolute; display: flex; align-items: center; gap: 12px; height: 54px; padding: 0 22px 0 18px;
+    border-radius: 999px; background: #1C212B; border: 1.5px solid #2E3442; color: var(--text); font-size: 23px; font-weight: 600; white-space: nowrap; }
+  .pill i { width: 12px; height: 12px; border-radius: 50%; background: var(--lime); display: block; }
+  .mono { font-family: 'GeistMono', monospace; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="glow"></div>
+  <div id="grid"></div>
+
+  <!-- 1. Logo ------------------------------------------------------------ -->
+  <svg id="tank" class="abs" viewBox="0 0 160 280" width="160" height="280" style="left:880px; top:400px; overflow:visible">
+    <defs>
+      <clipPath id="tankClip"><rect x="10" y="10" width="140" height="260" rx="46"/></clipPath>
+      <pattern id="hatch" width="14" height="14" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+        <rect width="4" height="14" fill="rgba(15,18,24,0.09)"/>
+      </pattern>
+    </defs>
+    <rect id="tankBody" x="10" y="10" width="140" height="260" rx="46" fill="#1C212B"/>
+    <g clip-path="url(#tankClip)">
+      <path id="liquid" fill="#C6F135"/>
+      <path id="liquidHatch" fill="url(#hatch)"/>
+      <path id="liquidShine" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="3"/>
+    </g>
+    <rect id="tankStroke" x="10" y="10" width="140" height="260" rx="46" fill="none" stroke="#3A4252" stroke-width="3"
+      pathLength="1" stroke-dasharray="1 1"/>
+  </svg>
+  <div id="wordmark" class="abs h" style="left:0; top:0; font-size:168px; white-space:nowrap">
+    <span class="line"><span>DataWatch</span></span>
+  </div>
+  <div id="tagline" class="abs over" style="left:0; top:0; color:var(--muted)">Suivi des données mobiles · Android</div>
+
+  <!-- 2. Problème --------------------------------------------------------- -->
+  <div id="s2text" class="abs h" style="left:160px; top:250px; font-size:150px">
+    <span class="line" id="s2l1"><span>Votre forfait</span></span>
+    <span class="line" id="s2l2"><span class="lime">fond.</span></span>
+  </div>
+  <div id="s2text2" class="abs h" style="left:160px; top:250px; font-size:150px">
+    <span class="line" id="s2l3"><span>Mais <span class="lime">où</span></span></span>
+    <span class="line" id="s2l4"><span>passe-t-il&nbsp;?</span></span>
+  </div>
+  <div id="s2meter" class="abs" style="left:1180px; top:330px; width:600px">
+    <div class="over" style="color:var(--muted)">Forfait 5 Go</div>
+    <div id="s2count" class="h mono" style="font-family:'Bricolage'; font-size:150px; margin-top:12px; font-variant-numeric: tabular-nums">5,00 Go</div>
+    <div style="position:relative; margin-top:34px; height:64px; border-radius:32px; background:#1C212B; box-shadow: inset 0 0 0 2px #2E3442; overflow:hidden">
+      <div id="s2bar" style="position:absolute; left:0; top:0; bottom:0; width:100%; border-radius:32px; background:#C6F135"></div>
+    </div>
+  </div>
+  <div id="s2drops"></div>
+
+  <!-- Transition liquide (plein écran) -------------------------------------- -->
+  <svg id="wipe" class="abs" width="1920" height="1080" viewBox="0 0 1920 1080" style="left:0; top:0; z-index:40">
+    <path id="wipePath" fill="#C6F135"/>
+  </svg>
+
+  <!-- 3–4–6. Textes à côté du téléphone ------------------------------------ -->
+  <div id="s3text" class="abs" style="left:160px; top:200px; width:860px">
+    <div class="over"><span class="line"><span>01 — Le réservoir</span></span></div>
+    <div class="h" style="font-size:96px; margin-top:28px">
+      <span class="line"><span>Ce qu’il vous reste,</span></span>
+      <span class="line"><span class="lime">d’un coup d’œil.</span></span>
+    </div>
+    <div style="margin-top:56px; display:flex; flex-direction:column; gap:26px">
+      <div class="feat"><div class="dot"></div><span>Volume restant estimé, jamais confondu avec le solde officiel</span></div>
+      <div class="feat"><div class="dot"></div><span>Le rythme : « épuisé le 21 oct. au matin »</span></div>
+      <div class="feat"><div class="dot"></div><span>Données mobiles et Wi-Fi séparées</span></div>
+    </div>
+  </div>
+  <div id="s4text" class="abs" style="left:160px; top:200px; width:860px">
+    <div class="over"><span class="line"><span>02 — Vos applications</span></span></div>
+    <div class="h" style="font-size:96px; margin-top:28px">
+      <span class="line"><span>Chaque appli,</span></span>
+      <span class="line"><span class="lime">à sa juste place.</span></span>
+    </div>
+    <div style="margin-top:56px; display:flex; flex-direction:column; gap:26px">
+      <div class="feat"><div class="dot"></div><span>Classées de la plus gourmande à la plus sobre</span></div>
+      <div class="feat"><div class="dot"></div><span>L’évolution face à la période précédente</span></div>
+      <div class="feat"><div class="dot"></div><span>Système et partage de connexion compris : rien ne se cache</span></div>
+    </div>
+  </div>
+  <div id="s6text" class="abs" style="left:1000px; top:200px; width:820px">
+    <div class="over"><span class="line"><span>04 — Conseils</span></span></div>
+    <div class="h" style="font-size:90px; margin-top:28px">
+      <span class="line"><span>Des conseils</span></span>
+      <span class="line"><span class="lime">pour chaque appli.</span></span>
+    </div>
+    <div style="margin-top:56px; display:flex; flex-direction:column; gap:26px">
+      <div class="feat"><div class="dot"></div><span>Les 7 derniers jours, appli par appli</span></div>
+      <div class="feat"><div class="dot"></div><span>Des gestes adaptés : vidéo, messagerie, navigateur…</span></div>
+      <div class="feat"><div class="dot"></div><span>Un accès direct aux réglages Android</span></div>
+    </div>
+  </div>
+
+  <!-- Téléphone -->
+  <div id="phone">
+    <div id="screen">
+      <div class="shot" id="shotA"><img id="imgA"></div>
+      <div class="shot" id="shotB"><img id="imgB"></div>
+      <div class="nav" id="navA"></div>
+      <div class="nav" id="navB"></div>
+      <div id="statusBg" style="position:absolute; left:0; right:0; top:0; height:40px; background:#EEF0F3; z-index:4; opacity:0"></div>
+      <div id="status"><span>14:26</span><span class="icons">
+        <svg width="18" height="14" viewBox="0 0 18 14"><path d="M1 13h3V9H1zM6 13h3V6H6zM11 13h3V3h-3zM16 13h1V0h-1z" fill="currentColor"/></svg>
+        <svg width="18" height="14" viewBox="0 0 24 18"><path d="M12 17.5l3.2-4a5 5 0 0 0-6.4 0zM3.5 7.5a12 12 0 0 1 17 0l-2.2 2.7a8.6 8.6 0 0 0-12.6 0zM0 3.6A17 17 0 0 1 24 3.6l-2.2 2.6a13.6 13.6 0 0 0-19.6 0z" fill="currentColor"/></svg>
+        <svg width="26" height="14" viewBox="0 0 26 14"><rect x="0.75" y="0.75" width="21" height="12.5" rx="3.5" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="3" y="3" width="13" height="8" rx="1.5" fill="currentColor"/><rect x="23" y="4.5" width="2" height="5" rx="1" fill="currentColor"/></svg>
+      </span></div>
+      <div id="cam"></div>
+    </div>
+  </div>
+
+  <!-- Repères posés sur l'écran -->
+  <div id="callout" class="pill" style="z-index:12"><i></i><span>Jauge réservoir</span></div>
+  <svg id="calloutLine" class="abs" width="1920" height="1080" style="left:0; top:0; z-index:11; overflow:visible">
+    <path id="calloutPath" fill="none" stroke="#C6F135" stroke-width="2.5" stroke-dasharray="1" pathLength="1"/>
+    <circle id="calloutDot" r="9" fill="#C6F135"/>
+    <circle id="calloutRing" r="9" fill="none" stroke="#C6F135" stroke-width="2"/>
+  </svg>
+  <div id="floatCard" class="card" style="width:420px; padding:22px 24px; z-index:12; display:flex; gap:18px; align-items:center">
+    <div style="width:64px; height:64px; border-radius:20px; background:#E4E8FF; color:#2B3FB0; display:grid; place-items:center; font-family:'Bricolage'; font-weight:760; font-size:26px">Tk</div>
+    <div style="flex:1">
+      <div style="font-size:24px; font-weight:600">TikTok</div>
+      <div style="font-size:19px; color:#5A6170; margin-top:2px">33 % du total mobile</div>
+    </div>
+    <div style="text-align:right">
+      <div style="font-family:'Bricolage'; font-size:34px; font-weight:760; letter-spacing:-0.03em">1,21 Go</div>
+      <div style="display:inline-block; margin-top:4px; padding:3px 10px; border-radius:8px; background:#FFEBDD; color:#A33A00; font-size:18px; font-weight:600">↑ 18 %</div>
+    </div>
+  </div>
+
+  <!-- 5. Alertes ------------------------------------------------------------ -->
+  <div id="s5text" class="abs" style="left:160px; top:150px; width:900px">
+    <div class="over"><span class="line"><span>03 — Alertes</span></span></div>
+    <div class="h" style="font-size:118px; margin-top:28px">
+      <span class="line"><span>Prévenu</span></span>
+      <span class="line"><span class="lime">tous les 20 %.</span></span>
+    </div>
+    <p id="s5sub" style="margin-top:40px; font-size:32px; line-height:1.4; color:var(--muted); max-width:760px">Même application fermée. Une seule alerte par seuil, pour chaque forfait.</p>
+  </div>
+  <div id="notif" class="card" style="left:1010px; top:170px; width:760px; padding:28px 32px">
+    <div style="display:flex; align-items:center; gap:14px; font-size:21px; color:#5A6170">
+      <div style="width:40px; height:40px; border-radius:50%; background:#10131A; display:grid; place-items:center">
+        <svg width="16" height="24" viewBox="0 0 16 24"><rect x="1" y="1" width="14" height="22" rx="5" fill="#2A303C"/><rect x="3.5" y="11" width="9" height="9.5" rx="2.5" fill="#C6F135"/></svg>
+      </div>
+      <b style="color:#0F1218; font-weight:600">DataWatch</b><span>· maintenant</span>
+    </div>
+    <div style="margin-top:18px; font-size:31px; font-weight:700; letter-spacing:-0.01em">Seuil de 80 % atteint</div>
+    <div style="margin-top:8px; font-size:25px; line-height:1.4; color:#3D4452">Il reste environ 1 Go sur 5 Go, jusqu’au 22 oct. à 08:30.</div>
+  </div>
+  <div id="track" class="abs" style="left:240px; top:800px; width:1440px; height:14px; border-radius:7px; background:#1E2330">
+    <div id="trackFill" style="position:absolute; left:0; top:0; bottom:0; border-radius:7px; background:linear-gradient(90deg, #C6F135, #C6F135 70%, #FF9F5A)"></div>
+  </div>
+  <div id="nodes"></div>
+  <div id="toasts"></div>
+
+  <!-- 7. Confiance ----------------------------------------------------------- -->
+  <div id="s7text" class="abs h" style="left:0; width:1920px; top:150px; font-size:132px; text-align:center">
+    <span class="line"><span>Vos données</span></span>
+    <span class="line"><span class="lime">restent ici.</span></span>
+  </div>
+  <div id="s7cards"></div>
+
+  <!-- 8. Fin ------------------------------------------------------------------ -->
+  <div id="end" class="abs" style="left:0; top:0; width:1920px; height:1080px; z-index:45">
+    <svg id="endTank" class="abs" viewBox="18 18 72 72" width="210" height="210" style="overflow:visible; filter: drop-shadow(0 24px 40px rgba(38,48,10,0.35))">
+      <defs><linearGradient id="tileInk" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#222837"/><stop offset="1" stop-color="#0C0F14"/></linearGradient></defs>
+      <rect x="18" y="18" width="72" height="72" rx="17" fill="url(#tileInk)"/>
+      <rect x="39" y="28" width="30" height="52" rx="10" fill="#2A303C"/>
+      <path d="M45.5,52 H62.5 A2.5,2.5 0 0 1 65,54.5 V70 A6,6 0 0 1 59,76 H49 A6,6 0 0 1 43,70 V54.5 A2.5,2.5 0 0 1 45.5,52 Z" fill="#C6F135"/>
+      <rect x="45" y="52" width="18" height="1.4" fill="rgba(255,255,255,0.55)"/>
+    </svg>
+    <div id="endWord" class="abs h" style="font-size:176px; color:#0F1218; white-space:nowrap"><span class="line"><span>DataWatch</span></span></div>
+    <div id="endTag" class="abs" style="font-family:'Bricolage'; font-weight:600; font-size:52px; letter-spacing:-0.02em; color:#26300A; white-space:nowrap">Voyez où partent vos données.</div>
+    <div id="endUrl" class="abs mono" style="font-size:26px; letter-spacing:0.16em; color:#34470A; white-space:nowrap">APPLICATION ANDROID · ALOPRO.NET</div>
+  </div>
+
+  <div id="grain"></div>
+</div>
+
+<script>
+  'use strict';
+  window.DURATION = 50;
+
+  // ---- Outils d'animation (tout dépend du seul temps t, en secondes) ----
+  const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+  const p = (t, a, b) => clamp((t - a) / (b - a));
+  const lerp = (a, b, k) => a + (b - a) * k;
+  const outExpo = x => (x >= 1 ? 1 : 1 - Math.pow(2, -10 * x));
+  const outCubic = x => 1 - Math.pow(1 - x, 3);
+  const inOutCubic = x => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
+  const inCubic = x => x * x * x;
+  const outBack = x => { const c1 = 1.4, c3 = c1 + 1; return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2); };
+  const $ = id => document.getElementById(id);
+  const css = (el, props) => { for (const k in props) el.style[k] = props[k]; };
+  const show = (el, on) => { el.style.visibility = on ? 'visible' : 'hidden'; };
+
+  /** Lignes masquées : chaque ligne monte depuis sous son masque, puis repart vers le haut. */
+  function lines(root, t, tin, tout, { stagger = 0.09, dur = 0.85 } = {}) {
+    const spans = root.querySelectorAll('.line > span');
+    spans.forEach((s, i) => {
+      const a = outExpo(p(t, tin + i * stagger, tin + i * stagger + dur));
+      const b = inCubic(p(t, tout + i * 0.05, tout + i * 0.05 + 0.5));
+      s.style.transform = `translateY(${(1 - a) * 115 - b * 115}%)`;
+    });
+  }
+
+  /** Apparition en fondu + glissement, et sortie. */
+  function rise(el, t, tin, tout, { dy = 40, dur = 0.8 } = {}) {
+    const a = outExpo(p(t, tin, tin + dur));
+    const b = inCubic(p(t, tout, tout + 0.45));
+    el.style.opacity = a * (1 - b);
+    el.style.transform = `translateY(${(1 - a) * dy - b * dy}px)`;
+  }
+
+  // ---- Liquide ----
+  function wave(width, height, level, phase, amp, wavelength, x0 = 0) {
+    const y0 = height * (1 - level);
+    let d = `M ${x0} ${height + 40} L ${x0} ${y0}`;
+    for (let x = 0; x <= width; x += 20) {
+      const y = y0 + Math.sin((x / wavelength) * Math.PI * 2 + phase) * amp + Math.sin((x / (wavelength * 0.53)) * Math.PI * 2 - phase * 1.3) * amp * 0.35;
+      d += ` L ${x0 + x} ${y.toFixed(2)}`;
+    }
+    return d + ` L ${x0 + width} ${height + 40} Z`;
+  }
+  function shine(width, height, level, phase, amp, wavelength) {
+    const y0 = height * (1 - level);
+    let d = '';
+    for (let x = 0; x <= width; x += 10) {
+      const y = y0 + Math.sin((x / wavelength) * Math.PI * 2 + phase) * amp + 1.5;
+      d += `${x === 0 ? 'M' : 'L'} ${x} ${y.toFixed(2)} `;
+    }
+    return d;
+  }
+
+  // ---- Téléphone ----
+  const SCALE = 420 / 720;          // capture (720 px de large) → écran
+  const SCREEN_H = 916;
+  const NAV_PX = 160;               // barre d'onglets de l'application, en pixels de capture
+  const shots = {
+    home: { src: '/tool/promo/assets/screens/home.png', h: 3000, nav: true },
+    apps: { src: '/tool/promo/assets/screens/apps.png', h: 2800, nav: true },
+    detail: { src: '/tool/promo/assets/screens/detail.png', h: 3000, nav: false },
+  };
+
+  function setShot(slot, key, scroll, x) {
+    const s = shots[key];
+    const img = $('img' + slot), shot = $('shot' + slot), nav = $('nav' + slot);
+    if (img.dataset.key !== key) { img.src = s.src; img.dataset.key = key; }
+    // Défilement en pixels de capture, borné pour garder la barre d'onglets fixe.
+    const visible = SCREEN_H / SCALE - (s.nav ? NAV_PX : 0);
+    const maxScroll = Math.max(0, s.h - (s.nav ? NAV_PX : 0) - visible);
+    const y = -clamp(scroll, 0, maxScroll) * SCALE;
+    if (x === 0 || slot === 'B') $('statusBg').style.opacity = clamp(clamp(scroll, 0, maxScroll) / 40);
+    css(shot, { transform: `translate(${x}px, ${y}px)`, visibility: 'visible' });
+    if (s.nav) {
+      css(nav, { backgroundImage: `url(${s.src})`, height: `${NAV_PX * SCALE}px`, transform: `translateX(${x}px)`, visibility: 'visible' });
+    } else {
+      nav.style.visibility = 'hidden';
+    }
+  }
+
+  function phone(t) {
+    const el = $('phone');
+    let x = 1380, y = 66, rot = 0, opacity = 1, scale = 1;
+    // Scène 3 : entrée depuis le bas.
+    const enter = outBack(p(t, 11.9, 13.0));
+    // Scène 5 : sortie vers la droite ; scène 6 : retour à gauche.
+    const exit = inOutCubic(p(t, 26.4, 27.2));
+    const back = outExpo(p(t, 33.5, 34.6));
+    const leave = inOutCubic(p(t, 39.7, 40.4));
+
+    if (t < 26.4) {
+      y = lerp(1180, 66, enter);
+      rot = lerp(-8, 0, enter);
+      x = 1380;
+      // Légère respiration.
+      y += Math.sin(t * 1.1) * 6;
+    } else if (t < 33.5) {
+      x = lerp(1380, 2400, exit);
+      rot = lerp(0, 8, exit);
+    } else {
+      x = lerp(-600, 520, back);
+      rot = lerp(-8, 0, back);
+      y = 66 + Math.sin(t * 1.1) * 6 + lerp(0, 1100, leave);
+      opacity = 1 - leave;
+    }
+    css(el, {
+      left: `${x - 226}px`, top: `${y}px`, opacity,
+      transform: `rotate(${rot}deg) scale(${scale})`,
+      visibility: t > 11.8 && t < 40.5 && !(t > 27.3 && t < 33.4) ? 'visible' : 'hidden',
+    });
+
+    // Contenu de l'écran.
+    if (t < 19.6) {
+      // Accueil : défilement vers la consommation, puis retour léger.
+      const s1 = inOutCubic(p(t, 15.8, 17.6));
+      setShot('A', 'home', lerp(0, 980, s1), 0);
+      $('shotB').style.visibility = 'hidden'; $('navB').style.visibility = 'hidden';
+      $('status').style.color = '#0F1218';
+    } else if (t < 33) {
+      // Passage à l'écran Applications par glissement latéral.
+      const k = inOutCubic(p(t, 19.6, 20.3));
+      setShot('A', 'home', 980, -420 * k);
+      const s2 = inOutCubic(p(t, 22.6, 24.6));
+      setShot('B', 'apps', lerp(0, 760, s2), 420 * (1 - k));
+    } else {
+      $('shotB').style.visibility = 'hidden'; $('navB').style.visibility = 'hidden';
+      const s3 = inOutCubic(p(t, 35.4, 36.8));
+      const s4 = inOutCubic(p(t, 37.6, 39.0));
+      setShot('A', 'detail', lerp(0, 820, s3) + lerp(0, 700, s4), 0);
+    }
+  }
+
+  /** Point de la capture (sx, sy) → position à l'écran, pour poser un repère. */
+  function screenPoint(sx, sy, scroll) {
+    const ph = $('phone');
+    const left = parseFloat(ph.style.left) + 16, top = parseFloat(ph.style.top) + 16;
+    return [left + sx * SCALE, top + (sy - scroll) * SCALE];
+  }
+
+  // ---- Construction des éléments répétés ----
+  document.querySelectorAll('.feat .dot').forEach(d => {
+    d.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#C6F135" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5L20 7"/></svg>';
+  });
+  const dropsRoot = $('s2drops');
+  const DROPS = ['TikTok', 'YouTube', 'WhatsApp', 'Facebook', 'Mises à jour', 'Arrière-plan', 'Instagram', 'Chrome'];
+  DROPS.forEach(name => {
+    const d = document.createElement('div');
+    d.className = 'pill'; d.innerHTML = `<i></i><span>${name}</span>`;
+    dropsRoot.appendChild(d);
+  });
+
+  const NODE_X = pct => 240 + 1440 * pct / 100;
+  const nodesRoot = $('nodes'), toastsRoot = $('toasts');
+  [20, 40, 60, 80, 100].forEach(v => {
+    const n = document.createElement('div');
+    n.className = 'abs';
+    n.innerHTML = `<div class="node" style="position:absolute; left:-22px; top:-22px; width:44px; height:44px; border-radius:50%; background:#151922; box-shadow: inset 0 0 0 3px #2E3442"></div>
+      <div class="mono" style="position:absolute; left:-60px; width:120px; top:40px; text-align:center; font-size:26px; color:#A7AFBD">${v} %</div>`;
+    css(n, { left: `${NODE_X(v)}px`, top: '807px' });
+    nodesRoot.appendChild(n);
+    if (v < 80 || v === 100) {
+      const toast = document.createElement('div');
+      toast.className = 'pill';
+      toast.innerHTML = `<i style="background:${v === 100 ? '#FF8F8F' : '#C6F135'}"></i><span>${v === 100 ? 'Forfait épuisé' : `Seuil de ${v} % atteint`}</span>`;
+      toastsRoot.appendChild(toast);
+      toast.dataset.v = v;
+    }
+  });
+
+  const CARDS = [
+    ['M8 11V7a4 4 0 0 1 8 0v4M5 11h14v10H5z', '100 % local', 'Tout est calculé sur le téléphone. Aucun compte à créer.'],
+    ['M3 3l18 18M8.5 16.4a5 5 0 0 1 7 0M5 12.9a10 10 0 0 1 4.3-2.6M15 10.3a10 10 0 0 1 4 2.6M2 9.3A15 15 0 0 1 6.2 6.6M12 20h.01', 'Aucun envoi', 'L’application n’a même pas accès à Internet.'],
+    ['M7 3h7l4 4v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zM9 11h6v6H9z', 'Toutes vos SIM', 'Double SIM additionnée, dès Android 7.0.'],
+  ];
+  const cardsRoot = $('s7cards');
+  CARDS.forEach(([path, title, body], i) => {
+    const c = document.createElement('div');
+    c.className = 'abs';
+    css(c, { left: `${160 + i * 546}px`, top: '560px', width: '506px', padding: '44px 42px', borderRadius: '36px', background: '#151922', boxShadow: 'inset 0 0 0 1.5px #262C38' });
+    c.innerHTML = `<div style="width:76px; height:76px; border-radius:50%; background:#C6F135; display:grid; place-items:center">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#0F1218" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="${path}"/></svg></div>
+      <div class="h" style="font-size:44px; margin-top:34px; letter-spacing:-0.03em">${title}</div>
+      <div style="font-size:27px; line-height:1.4; margin-top:14px; color:#A7AFBD">${body}</div>`;
+    cardsRoot.appendChild(c);
+  });
+
+  // ---- Rendu d'une image ----
+  function render(t) {
+    // Ambiance
+    css($('glow'), { left: `${lerp(260, 1000, (Math.sin(t * 0.18) + 1) / 2)}px`, top: `${-200 + Math.cos(t * 0.23) * 120}px` });
+    $('grid').style.opacity = 0.9 * outCubic(p(t, 0, 1.2));
+    $('grid').style.transform = `translate(${(t * 6) % 32}px, ${(t * 3) % 32}px)`;
+    const f = Math.floor(t * 30);
+    $('grain').style.transform = `translate(${((f * 73) % 160) - 80}px, ${((f * 151) % 160) - 80}px)`;
+
+    // 1. Logo (0 → 5,2 s)
+    const tank = $('tank');
+    show(tank, t < 5.4);
+    const draw = inOutCubic(p(t, 0.3, 1.6));
+    $('tankStroke').style.strokeDashoffset = 1 - draw;
+    $('tankBody').style.opacity = outCubic(p(t, 0.9, 1.6));
+    const level = 0.58 * outCubic(p(t, 1.2, 2.8));
+    const phase = t * 3.2;
+    const amp = 7 * (1 - outCubic(p(t, 2.4, 4.4))) + 1.5;
+    $('liquid').setAttribute('d', wave(160, 280, level * (260 / 280), phase, amp, 120, 0));
+    $('liquidHatch').setAttribute('d', wave(160, 280, level * (260 / 280), phase, amp, 120, 0));
+    $('liquidShine').setAttribute('d', level > 0.01 ? shine(160, 280, level * (260 / 280), phase, amp, 120) : '');
+    const move = inOutCubic(p(t, 2.6, 3.5));
+    const out1 = inCubic(p(t, 4.5, 5.2));
+    const tankScale = lerp(1, 0.62, move);
+    const tankX = lerp(880, 452, move), tankY = lerp(400, 434, move) - out1 * 160;
+    css(tank, { left: `${tankX}px`, top: `${tankY}px`, transform: `scale(${tankScale})`, transformOrigin: '0 0', opacity: 1 - out1 });
+    const wm = $('wordmark');
+    css(wm, { left: '590px', top: `${430 - out1 * 160}px`, opacity: 1 - out1 });
+    lines(wm, t, 3.0, 99);
+    const tg = $('tagline');
+    css(tg, { left: '598px', top: `${638 - out1 * 160}px` });
+    rise(tg, t, 3.5, 4.5, { dy: 20 });
+    show(wm, t < 5.4); show(tg, t < 5.4);
+
+    // 2. Problème (5,2 → 11,4 s)
+    const s2on = t > 5.0 && t < 11.6;
+    show($('s2text'), s2on); show($('s2text2'), s2on); show($('s2meter'), s2on); show(dropsRoot, s2on);
+    lines($('s2text'), t, 5.4, 7.7);
+    lines($('s2text2'), t, 8.1, 10.45);
+    rise($('s2meter'), t, 5.6, 10.4, { dy: 30 });
+    const drain = outCubic(p(t, 6.0, 10.6));
+    const remaining = 5 * (1 - drain * 0.904);
+    $('s2count').textContent = remaining >= 1
+      ? `${remaining.toFixed(2).replace('.', ',')} Go`
+      : `${Math.round(remaining * 1024)} Mo`;
+    $('s2count').style.color = remaining < 1 ? '#FFB27A' : '#F2F4F7';
+    css($('s2bar'), { width: `${(remaining / 5) * 100}%`, background: remaining < 1 ? '#FF9F5A' : '#C6F135' });
+    [...dropsRoot.children].forEach((d, i) => {
+      const t0 = 6.2 + i * 0.52;
+      const k = p(t, t0, t0 + 2.4);
+      const x = 1180 + 600 * Math.max(0.06, Math.min(0.94, remaining / 5)) - 70;
+      const fade = Math.min(1, k * 5) * (1 - inCubic(p(k, 0.55, 1)));
+      css(d, {
+        left: `${x}px`,
+        top: `${650 + inCubic(k) * 320 + outCubic(k) * 40}px`,
+        opacity: k <= 0 || k >= 1 ? 0 : fade * 0.95 * (1 - inCubic(p(t, 10.2, 10.6))),
+        transform: `translateX(${(i % 2 ? 1 : -1) * outCubic(k) * (60 + (i % 3) * 50)}px) rotate(${(i % 2 ? 1 : -1) * k * 10}deg)`,
+      });
+    });
+    // Sortie de la scène 2 sous le liquide.
+
+    // Transitions liquides
+    let wipeLevel = 0;
+    if (t >= 10.8 && t < 12.4) {
+      wipeLevel = t < 11.5 ? inOutCubic(p(t, 10.8, 11.5)) * 1.08 : (1 - inOutCubic(p(t, 11.5, 12.3))) * 1.08;
+    } else if (t >= 45.2) {
+      wipeLevel = inOutCubic(p(t, 45.2, 46.1)) * 1.08;
+    }
+    $('wipePath').setAttribute('d', wipeLevel > 0 ? wave(1920, 1080, wipeLevel, t * 4, 22, 520) : '');
+    show($('wipe'), wipeLevel > 0);
+
+    // 3. Accueil (11,5 → 19,5 s)
+    const s3 = $('s3text');
+    show(s3, t > 11.6 && t < 20.2);
+    lines(s3, t, 12.3, 19.2);
+    s3.querySelectorAll('.feat').forEach((el, i) => rise(el, t, 13.6 + i * 0.25, 19.1 + i * 0.05));
+
+    phone(t);
+
+    // Repère sur la jauge (scène 3)
+    const cIn = outExpo(p(t, 14.4, 15.2)), cOut = inCubic(p(t, 15.6, 16.0));
+    const cOn = cIn > 0 && cOut < 1;
+    show($('callout'), cOn); show($('calloutLine'), cOn);
+    if (cOn) {
+      const [gx, gy] = screenPoint(560, 790, 0);
+      const lx = 1626, ly = 470;
+      $('calloutPath').setAttribute('d', `M ${gx} ${gy} C ${gx + 80} ${gy}, ${lx - 80} ${ly}, ${lx} ${ly}`);
+      $('calloutPath').style.strokeDashoffset = 1 - cIn;
+      css($('calloutPath'), { opacity: 1 - cOut });
+      $('calloutDot').setAttribute('cx', gx); $('calloutDot').setAttribute('cy', gy);
+      $('calloutDot').style.opacity = 1 - cOut;
+      const ring = (t * 1.4) % 1;
+      $('calloutRing').setAttribute('cx', gx); $('calloutRing').setAttribute('cy', gy);
+      $('calloutRing').setAttribute('r', 9 + ring * 22);
+      $('calloutRing').style.opacity = (1 - ring) * (1 - cOut) * cIn;
+      css($('callout'), { left: `${lx - 8}px`, top: `${ly - 27}px`, opacity: cIn * (1 - cOut), transform: `translateX(${(1 - cIn) * 30}px)` });
+    }
+
+    // 4. Applications (19,5 → 26,4 s)
+    const s4 = $('s4text');
+    show(s4, t > 19.4 && t < 26.6);
+    lines(s4, t, 19.8, 25.9);
+    s4.querySelectorAll('.feat').forEach((el, i) => rise(el, t, 21.0 + i * 0.25, 25.8 + i * 0.05));
+    // La carte part de la ligne TikTok de l'écran, puis se pose à gauche du téléphone.
+    const fc = $('floatCard');
+    const fIn = outBack(p(t, 21.5, 22.6)), fAppear = outCubic(p(t, 21.5, 21.75)), fOut = inCubic(p(t, 25.6, 26.1));
+    show(fc, fAppear > 0 && fOut < 1);
+    const [rowX, rowY] = screenPoint(32, 690, 0);
+    css(fc, {
+      left: `${lerp(rowX, 1010, fIn)}px`,
+      top: `${lerp(rowY, 640, fIn) + Math.sin(t * 1.6) * 8 * clamp(fIn)}px`,
+      opacity: fAppear * (1 - fOut),
+      transformOrigin: '0 0',
+      transform: `scale(${lerp(0.9, 1.04, clamp(fIn))}) rotate(${lerp(0, -3, clamp(fIn))}deg)`,
+      boxShadow: `0 ${lerp(4, 34, clamp(fIn))}px ${lerp(8, 70, clamp(fIn))}px rgba(0,0,0,${lerp(0.15, 0.5, clamp(fIn))})`,
+    });
+
+    // 5. Alertes (26,4 → 33,4 s)
+    const s5 = $('s5text');
+    const s5on = t > 26.5 && t < 33.6;
+    show(s5, s5on); show($('track'), s5on); show(nodesRoot, s5on); show(toastsRoot, s5on); show($('notif'), s5on);
+    lines(s5, t, 26.7, 33.0);
+    rise($('s5sub'), t, 27.3, 33.0, { dy: 20 });
+    const trackIn = outExpo(p(t, 27.2, 28.0)), s5out = inCubic(p(t, 33.0, 33.4));
+    css($('track'), { opacity: trackIn * (1 - s5out), transform: `scaleX(${trackIn})`, transformOrigin: '0 50%' });
+    const fill = 100 * inOutCubic(p(t, 28.2, 32.4));
+    css($('trackFill'), { width: `${fill}%` });
+    [...nodesRoot.children].forEach((n, i) => {
+      const v = (i + 1) * 20;
+      const lit = fill >= v - 0.5;
+      const pop = outBack(p(t, 28.2 + (v / 100) * 4.2 * 0.92, 28.2 + (v / 100) * 4.2 * 0.92 + 0.4));
+      n.style.opacity = trackIn * (1 - s5out);
+      const dot = n.querySelector('.node');
+      css(dot, {
+        background: lit ? (v === 100 ? '#FF8F8F' : v === 80 ? '#FF9F5A' : '#C6F135') : '#151922',
+        boxShadow: lit ? '0 0 0 8px rgba(198,241,53,0.12)' : 'inset 0 0 0 3px #2E3442',
+        transform: `scale(${lit ? lerp(0.6, 1, clamp(pop)) : 0.75})`,
+      });
+    });
+    const toastList = [...toastsRoot.children];
+    toastList.forEach((toast, i) => {
+      const v = +toast.dataset.v;
+      const t0 = 28.2 + inverseFill(v) * 4.2;
+      const next = toastList[i + 1];
+      const t1 = next ? 28.2 + inverseFill(+next.dataset.v) * 4.2 - 0.05 : 33.0;
+      // Le seuil de 80 % a sa propre notification : la bulle s'efface avant.
+      const tEnd = v === 60 ? Math.min(t1, 28.2 + inverseFill(80) * 4.2) : t1;
+      const on = t >= t0 && t < tEnd;
+      toast.style.visibility = on ? 'visible' : 'hidden';
+      if (on) {
+        const k = outBack(p(t, t0, t0 + 0.35));
+        const out = inCubic(p(t, tEnd - 0.18, tEnd));
+        css(toast, {
+          left: `${NODE_X(v)}px`, top: `${690}px`,
+          opacity: clamp(k * 2) * (1 - out) * (1 - s5out),
+          transform: `translate(-50%, ${(1 - clamp(k)) * 24}px) scale(${lerp(0.85, 1, clamp(k))})`,
+        });
+      }
+    });
+    const nIn = outBack(p(t, inverseFill(80) * 4.2 + 28.2, inverseFill(80) * 4.2 + 29.0));
+    css($('notif'), { opacity: clamp(nIn * 2) * (1 - s5out), transform: `translateY(${(1 - nIn) * -260}px) scale(${lerp(0.94, 1, clamp(nIn))})` });
+
+    // 6. Conseils (33,5 → 40 s)
+    const s6 = $('s6text');
+    show(s6, t > 33.4 && t < 40.4);
+    lines(s6, t, 34.0, 39.6);
+    s6.querySelectorAll('.feat').forEach((el, i) => rise(el, t, 35.2 + i * 0.25, 39.5 + i * 0.05));
+
+    // 7. Confiance (40 → 45,5 s)
+    const s7 = $('s7text');
+    show(s7, t > 40.2 && t < 46.2); show(cardsRoot, t > 40.2 && t < 46.2);
+    lines(s7, t, 40.5, 99);
+    [...cardsRoot.children].forEach((c, i) => {
+      const k = outExpo(p(t, 41.6 + i * 0.22, 42.6 + i * 0.22));
+      css(c, { opacity: k, transform: `translateY(${(1 - k) * 80}px)` });
+    });
+
+    // 8. Fin (45,2 → 50 s)
+    const end = $('end');
+    show(end, t > 45.9);
+    const eIn = outBack(p(t, 46.1, 47.0));
+    const wordX = 690, baseY = 404;
+    css($('endTank'), { left: `${wordX - 250}px`, top: `${baseY - 14}px`, transform: `translateY(${(1 - clamp(eIn)) * 60}px) scale(${lerp(0.8, 1, clamp(eIn))})`, opacity: clamp(eIn * 1.5) });
+    css($('endWord'), { left: `${wordX}px`, top: `${baseY}px` });
+    lines($('endWord'), t, 46.3, 99);
+    css($('endTag'), { left: `${wordX + 6}px`, top: `${baseY + 210}px` });
+    rise($('endTag'), t, 47.0, 99, { dy: 24 });
+    css($('endUrl'), { left: '0', width: '1920px', textAlign: 'center', top: '940px' });
+    rise($('endUrl'), t, 47.6, 99, { dy: 16 });
+  }
+
+  /** Instant (0–1) où le remplissage de la piste atteint v %. */
+  function inverseFill(v) {
+    const target = v / 100;
+    let lo = 0, hi = 1;
+    for (let i = 0; i < 30; i++) { const mid = (lo + hi) / 2; if (inOutCubic(mid) < target) lo = mid; else hi = mid; }
+    return (lo + hi) / 2;
+  }
+
+  window.render = render;
+  window.ready = async () => {
+    await document.fonts.ready;
+    const preload = Object.values(shots).map(s => new Promise(res => { const i = new Image(); i.onload = res; i.onerror = res; i.src = s.src; }));
+    await Promise.all(preload);
+    render(0);
+    return true;
+  };
+</script>
+</body>
+</html>
