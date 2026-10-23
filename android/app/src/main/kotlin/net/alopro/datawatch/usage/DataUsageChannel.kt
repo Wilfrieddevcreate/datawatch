@@ -29,6 +29,7 @@ class DataUsageChannel(
     private val mainHandler = Handler(Looper.getMainLooper())
     private val reader = NetworkUsageReader(activity.applicationContext)
     private val resolver = AppResolver(activity.applicationContext)
+    private val screenTime = ScreenTimeReader(activity.applicationContext)
 
     init {
         channel.setMethodCallHandler(this)
@@ -66,6 +67,11 @@ class DataUsageChannel(
                 }
                 val windows = ranges.map { longArrayOf(it[0].toLong(), it[1].toLong()) }
                 runAsync(result) { reader.usageForUidByRange(network, uid, windows) }
+            }
+            "getScreenTime" -> {
+                val start = call.longArg("start")
+                val end = call.longArg("end")
+                runAsync(result) { screenTime.foregroundTime(start, end) }
             }
             "getAppIcon" -> {
                 val packageName = call.argument<String>("packageName")

@@ -1,3 +1,4 @@
+import '../core/format.dart';
 import '../data/usage_source.dart';
 
 enum TipCategory {
@@ -286,4 +287,15 @@ List<AppAdvice> adviceFor(AppUsage app, {int? wifiBytes}) {
       'Dans Android : Applications › $name › Données mobiles, désactivez les données en arrière-plan.',
     ),
   ];
+}
+
+/// « Une heure de TikTok ≈ 1,05 Go, soit 21 % de votre forfait. »
+/// Null quand le temps d'écran ne permet pas d'estimer ce coût.
+String? hourCostLine(String name, int? perHour, int? planVolume) {
+  if (perHour == null) return null;
+  final cost = formatBytes(perHour);
+  if (planVolume == null || planVolume <= 0) {
+    return 'Une heure de $name ≈ $cost de données.';
+  }
+  return 'Une heure de $name ≈ $cost, soit ${formatShare(perHour / planVolume)} de votre forfait.';
 }

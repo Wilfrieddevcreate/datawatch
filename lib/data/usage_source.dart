@@ -138,6 +138,21 @@ class UsageSource {
     return [for (final v in raw ?? const []) (v as num).toInt()];
   }
 
+  /// Temps passé au premier plan par nom de paquet (même autorisation que
+  /// les statistiques réseau).
+  Future<Map<String, Duration>> screenTime(DateTime start, DateTime end) async {
+    final raw = await _guard(
+      () => _channel.invokeMapMethod<String, Object?>(
+        'getScreenTime',
+        _range(start, end),
+      ),
+    );
+    return {
+      for (final e in (raw ?? const <String, Object?>{}).entries)
+        e.key: Duration(milliseconds: (e.value as num).toInt()),
+    };
+  }
+
   Future<Uint8List?> appIcon(String packageName, {int size = 96}) {
     return _channel.invokeMethod<Uint8List>('getAppIcon', {
       'packageName': packageName,

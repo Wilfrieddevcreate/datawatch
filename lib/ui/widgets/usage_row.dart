@@ -121,6 +121,7 @@ class UsageRow extends StatelessWidget {
     this.height = 64,
     this.showDivider = true,
     this.variation,
+    this.secondaryLabel,
     this.onTap,
   });
 
@@ -139,6 +140,9 @@ class UsageRow extends StatelessWidget {
 
   /// Évolution par rapport à la période précédente (0,18 = +18 %).
   final double? variation;
+
+  /// Remplace la part du total sous le volume (ex. « 1,05 Go/h »).
+  final String? secondaryLabel;
   final VoidCallback? onTap;
 
   @override
@@ -218,7 +222,7 @@ class UsageRow extends StatelessWidget {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          formatShare(share),
+                          secondaryLabel ?? formatShare(share),
                           style: t.bodySmall!.copyWith(color: c.textSecondary),
                         ),
                         if (v != null) ...[

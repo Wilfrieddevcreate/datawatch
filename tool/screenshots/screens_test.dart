@@ -145,6 +145,19 @@ void main() {
     ),
   );
   testWidgets(
+    'applications par coût par heure',
+    (t) => _shoot(
+      t,
+      'applications_cout_heure',
+      plan: _plan(),
+      before: (t) async {
+        await t.tap(find.text('Applis'));
+        await t.pumpAndSettle();
+        await t.tap(find.text('Plus gourmandes'));
+      },
+    ),
+  );
+  testWidgets(
     'forfait',
     (t) => _shoot(
       t,

@@ -75,7 +75,8 @@ changement ; le Worker n'a donc pas besoin de Flutter pour tourner.
 
 ```
 android/app/src/main/kotlin/net/alopro/datawatch/
-  usage/      lecture des statistiques (NetworkStatsManager), canal `usage`
+  usage/      statistiques réseau (NetworkStatsManager), temps d'écran
+              (UsageStatsManager), canal `usage`
   device/     permissions, écrans de réglages, version, canal `device`
   alerts/     configuration, vérification, notification et Worker des alertes
 
@@ -108,6 +109,11 @@ lib/
 - **Applications masquées** : sans `QUERY_ALL_PACKAGES` (restreinte sur le Play
   Store), les paquets sans icône dans le lanceur sont regroupés dans
   « Autres services ».
+- **Temps d'écran** : reconstitué à la seconde depuis le journal d'événements
+  d'Android sur les 6 derniers jours ; au-delà, Android ne fournit que des
+  totaux quotidiens, approximatifs aux bords de la période. Le coût par heure
+  divise les données mobiles + Wi-Fi par ce temps (rien sous 10 min) :
+  l'arrière-plan le gonfle.
 
 ## Confidentialité
 

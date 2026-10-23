@@ -13,6 +13,7 @@ import 'app_detail_screen.dart';
 
 enum AppSort {
   desc('Plus gourmandes'),
+  perHour('Coût par heure'),
   asc('Moins gourmandes'),
   name('Nom (A–Z)');
 
@@ -44,7 +45,9 @@ class _AppsScreenState extends State<AppsScreen> {
     final source = _network == NetworkKind.mobile
         ? snapshot?.mobileApps
         : snapshot?.wifiApps;
-    final apps = source == null ? null : sortApps(source, _sort);
+    final apps = source == null
+        ? null
+        : sortApps(source, _sort, perHourOf: snapshot?.perHourOf);
     // Même total que l'accueil (compteur de l'appareil) ; la somme des
     // applications ne sert que si Android ne le fournit pas.
     final appsSum = apps?.fold<int>(0, (sum, a) => sum + a.bytes) ?? 0;
@@ -108,7 +111,14 @@ class _AppsScreenState extends State<AppsScreen> {
               ),
             ),
             OutlinedButton.icon(
-              onPressed: () => setState(() => _sort = _sort.next),
+              onPressed: () => setState(() {
+                var next = _sort.next;
+                // Sans temps d'écran, le coût par heure n'a pas de sens.
+                if (next == AppSort.perHour && snapshot?.screenTime == null) {
+                  next = next.next;
+                }
+                _sort = next;
+              }),
               style: OutlinedButton.styleFrom(
                 minimumSize: const Size(44, 44),
                 side: BorderSide(color: c.divider),
@@ -154,6 +164,9 @@ class _AppsScreenState extends State<AppsScreen> {
                         height: 68,
                         showDivider: i > 0,
                         variation: snapshot?.variationOf(apps[i], _network),
+                        secondaryLabel: _sort == AppSort.perHour
+                            ? _perHourLabel(snapshot?.perHourOf(apps[i]))
+                            : null,
                         onTap: apps[i].owner == UsageOwner.app
                             ? () => Navigator.of(
                                 context,
@@ -189,12 +202,30 @@ class _AppsScreenState extends State<AppsScreen> {
   }
 }
 
-/// Tri de la liste ; le tri par nom ignore les accents.
-List<AppUsage> sortApps(List<AppUsage> apps, AppSort sort) {
+String _perHourLabel(int? perHour) =>
+    perHour == null ? '—' : formatPerHour(perHour);
+
+/// Tri de la liste ; le tri par nom ignore les accents. Le coût par heure
+/// place d'abord les applications dont on connaît le rythme, de la plus
+/// coûteuse à la moins coûteuse, puis les autres par volume.
+List<AppUsage> sortApps(
+  List<AppUsage> apps,
+  AppSort sort, {
+  int? Function(AppUsage)? perHourOf,
+}) {
   final sorted = [...apps];
   switch (sort) {
     case AppSort.desc:
       sorted.sort((a, b) => b.bytes.compareTo(a.bytes));
+    case AppSort.perHour:
+      int? rate(AppUsage a) => perHourOf?.call(a);
+      sorted.sort((a, b) {
+        final ra = rate(a), rb = rate(b);
+        if (ra != null && rb != null) return rb.compareTo(ra);
+        if (ra != null) return -1;
+        if (rb != null) return 1;
+        return b.bytes.compareTo(a.bytes);
+      });
     case AppSort.asc:
       sorted.sort((a, b) => a.bytes.compareTo(b.bytes));
     case AppSort.name:

@@ -89,6 +89,9 @@ class _AppDetailScreenState extends State<AppDetailScreen> {
         ? null
         : snapshot!.variationOf(mobile, NetworkKind.mobile);
     final advice = adviceFor(mobile ?? app, wifiBytes: wifi?.bytes);
+    final screenTime = snapshot?.screenTimeOf(app);
+    final perHour = snapshot?.perHourOf(app);
+    final plan = controller.plan;
 
     return Scaffold(
       body: DwPage(
@@ -110,8 +113,17 @@ class _AppDetailScreenState extends State<AppDetailScreen> {
             share: share,
             isTop: isTop,
             change: change,
+            screenTime: screenTime,
           ),
           const SizedBox(height: 12),
+          if (perHour != null) ...[
+            _HourCost(
+              name: name,
+              perHour: perHour,
+              planVolume: plan?.volumeBytes,
+            ),
+            const SizedBox(height: 12),
+          ],
           if (app.uid != null) ...[
             FutureBuilder<List<int>>(
               future: _week,
@@ -168,6 +180,7 @@ class _Hero extends StatelessWidget {
     required this.share,
     required this.isTop,
     required this.change,
+    required this.screenTime,
   });
 
   final int mobileBytes;
@@ -175,6 +188,9 @@ class _Hero extends StatelessWidget {
   final double share;
   final bool isTop;
   final double? change;
+
+  /// Temps d'écran de la période, s'il est connu.
+  final Duration? screenTime;
 
   @override
   Widget build(BuildContext context) {
@@ -307,6 +323,31 @@ class _Hero extends StatelessWidget {
               ),
             ],
           ),
+          if (screenTime != null) ...[
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                const Icon(
+                  Icons.hourglass_bottom_rounded,
+                  size: 17,
+                  color: DwColors.tankOk,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Temps d’écran',
+                    style: t.bodyMedium!.copyWith(
+                      color: const Color(0xFFC9CFD9),
+                    ),
+                  ),
+                ),
+                Text(
+                  formatScreenTime(screenTime!),
+                  style: t.titleSmall!.copyWith(color: c.heroText),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );
@@ -665,6 +706,83 @@ class _AdviceRow extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   advice.body,
+                  style: t.bodyMedium!.copyWith(color: c.textSecondary),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Ce que coûte une heure dans l'application : toutes ses données (mobile et
+/// Wi-Fi) divisées par son temps d'écran sur la période.
+class _HourCost extends StatelessWidget {
+  const _HourCost({
+    required this.name,
+    required this.perHour,
+    required this.planVolume,
+  });
+
+  final String name;
+  final int perHour;
+  final int? planVolume;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.dw;
+    final t = Theme.of(context).textTheme;
+    final parts = sizeParts(perHour);
+    final share = planVolume == null || planVolume! <= 0
+        ? null
+        : perHour / planVolume!;
+    return DwCard(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: c.positiveSoft,
+              borderRadius: BorderRadius.circular(DwRadius.md),
+            ),
+            child: Icon(Icons.timer_outlined, size: 22, color: c.positiveText),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                DwOverline('Une heure de $name'),
+                const SizedBox(height: 6),
+                Text.rich(
+                  TextSpan(
+                    children: [
+                      TextSpan(
+                        text: '≈$nbsp${parts.value}',
+                        style: DwFonts.style(
+                          DwFonts.display,
+                          34,
+                          700,
+                          letterSpacing: -1,
+                          tabular: true,
+                        ),
+                      ),
+                      TextSpan(
+                        text: '$nbsp${parts.unit}',
+                        style: DwFonts.style(DwFonts.display, 18, 600),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  share == null
+                      ? 'Données consommées en moyenne par heure d’utilisation.'
+                      : 'En données mobiles, une heure ≈ ${formatShare(share)} de votre forfait de ${formatBytes(planVolume!)}.',
                   style: t.bodyMedium!.copyWith(color: c.textSecondary),
                 ),
               ],

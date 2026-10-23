@@ -51,6 +51,10 @@ class InfoScreen extends StatelessWidget {
           'Les données mobiles affichées additionnent toutes vos cartes SIM : le forfait déclaré est comparé à ce total.',
         ),
         (
+          'Temps d’écran et coût par heure',
+          'Le temps d’écran est le temps passé avec l’application ouverte devant vous, tel qu’Android le compte. Le coût par heure divise toutes ses données, mobiles et Wi-Fi, par ce temps : une application qui consomme beaucoup en arrière-plan paraît donc plus coûteuse. Il n’est affiché qu’à partir de 10 minutes d’utilisation.',
+        ),
+        (
           'Les alertes',
           'DataWatch vérifie vos seuils environ toutes les 15 minutes, même application fermée. Si Android limite DataWatch pour économiser la batterie, une alerte peut arriver en retard.',
         ),
@@ -71,7 +75,7 @@ class InfoScreen extends StatelessWidget {
       sections: [
         (
           'Ce que l’application lit',
-          'Avec l’autorisation « Accès aux données d’utilisation », DataWatch lit les volumes de données mobiles et Wi-Fi comptés par Android pour chaque application, ainsi que le nom et l’icône des applications installées.',
+          'Avec l’autorisation « Accès aux données d’utilisation », DataWatch lit les volumes de données mobiles et Wi-Fi comptés par Android pour chaque application, le temps passé sur chacune, ainsi que le nom et l’icône des applications installées.',
         ),
         (
           'Sur Android 9 et avant',
@@ -79,7 +83,7 @@ class InfoScreen extends StatelessWidget {
         ),
         (
           'Ce qu’elle ne lit pas',
-          'DataWatch ne lit ni vos SMS, ni vos messages, ni vos contacts, ni le contenu de vos échanges, ni votre position. Il ne connaît pas votre solde chez l’opérateur.',
+          'DataWatch ne lit ni vos SMS, ni vos messages, ni vos contacts, ni le contenu de vos échanges, ni ce que vous faites dans les applications, ni votre position. Il ne connaît pas votre solde chez l’opérateur.',
         ),
         (
           'Ce qui est enregistré',
@@ -110,7 +114,7 @@ class InfoScreen extends StatelessWidget {
           url: 'https://$publisherSite',
         ),
       ],
-      footer: 'Dernière mise à jour : 20 octobre 2026',
+      footer: 'Dernière mise à jour : 23 octobre 2026',
     ),
   );
 

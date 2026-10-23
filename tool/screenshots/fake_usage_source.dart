@@ -103,6 +103,19 @@ class FakeUsageSource implements UsageSource {
   }
 
   @override
+  Future<Map<String, Duration>> screenTime(
+    DateTime start,
+    DateTime end,
+  ) async => const {
+    'com.zhiliaoapp.musically': Duration(hours: 4, minutes: 40),
+    'com.google.android.youtube': Duration(hours: 3, minutes: 10),
+    'com.whatsapp': Duration(hours: 6, minutes: 20),
+    'com.facebook.katana': Duration(hours: 2, minutes: 30),
+    'com.android.chrome': Duration(hours: 3),
+    'com.instagram.android': Duration(hours: 1, minutes: 20),
+  };
+
+  @override
   Future<List<int>> appUsageByRange(
     int uid,
     NetworkKind network,

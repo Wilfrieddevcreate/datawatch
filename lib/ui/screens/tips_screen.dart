@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../app/app_scope.dart';
+import '../../data/usage_source.dart';
 import '../../domain/tips.dart';
 import '../theme/tokens.dart';
 import '../theme/typography.dart';
@@ -21,8 +22,19 @@ class _TipsScreenState extends State<TipsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final apps = AppScope.of(context).snapshot?.mobileApps;
+    final controller = AppScope.of(context);
+    final snapshot = controller.snapshot;
+    final apps = snapshot?.mobileApps;
     final focus = apps == null ? null : focusFor(apps);
+    // Le coût d'une heure de l'appli la plus gourmande, si on connaît son temps d'écran.
+    final top = apps?.where((a) => a.owner == UsageOwner.app).firstOrNull;
+    final hourLine = top == null
+        ? null
+        : hourCostLine(
+            top.displayName,
+            snapshot!.perHourOf(top),
+            controller.plan?.volumeBytes,
+          );
     final tips = allTips
         .where((tip) => _filter == null || tip.category == _filter)
         .toList();
@@ -38,6 +50,7 @@ class _TipsScreenState extends State<TipsScreen> {
         if (focus != null) ...[
           _FocusCard(
             focus: focus,
+            hourLine: hourLine,
             onShow: () => setState(() => _filter = focus.category),
           ),
           const SizedBox(height: 16),
@@ -74,9 +87,14 @@ class _TipsScreenState extends State<TipsScreen> {
 }
 
 class _FocusCard extends StatelessWidget {
-  const _FocusCard({required this.focus, required this.onShow});
+  const _FocusCard({
+    required this.focus,
+    required this.hourLine,
+    required this.onShow,
+  });
 
   final TipFocus focus;
+  final String? hourLine;
   final VoidCallback onShow;
 
   @override
@@ -141,6 +159,25 @@ class _FocusCard extends StatelessWidget {
             focus.detail,
             style: t.bodyMedium!.copyWith(color: const Color(0xFF26300A)),
           ),
+          if (hourLine != null) ...[
+            const SizedBox(height: 12),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Padding(
+                  padding: EdgeInsets.only(top: 1),
+                  child: Icon(Icons.timer_outlined, size: 18, color: ink),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    hourLine!,
+                    style: t.bodyMedium!.weight(600).copyWith(color: ink),
+                  ),
+                ),
+              ],
+            ),
+          ],
           const SizedBox(height: 14),
           FilledButton.icon(
             onPressed: onShow,

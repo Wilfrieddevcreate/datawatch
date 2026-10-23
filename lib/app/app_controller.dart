@@ -40,6 +40,7 @@ class UsageSnapshot {
     required this.fetchedAt,
     this.previousMobile,
     this.previousWifi,
+    this.screenTime,
   });
 
   final UsagePeriod period;
@@ -53,6 +54,31 @@ class UsageSnapshot {
   /// (clé : [AppUsage.key]). Null si Android ne l'a pas fournie.
   final Map<String, int>? previousMobile;
   final Map<String, int>? previousWifi;
+
+  /// Temps d'écran de la période par nom de paquet. Null si Android ne l'a
+  /// pas fourni.
+  final Map<String, Duration>? screenTime;
+
+  Duration? screenTimeOf(AppUsage app) =>
+      app.packageName == null ? null : screenTime?[app.packageName];
+
+  /// Toutes les données d'une application (mobile et Wi-Fi) sur la période.
+  int totalBytesOf(AppUsage app) {
+    int bytesIn(List<AppUsage> list) {
+      for (final a in list) {
+        if (a.key == app.key) return a.bytes;
+      }
+      return 0;
+    }
+
+    return bytesIn(mobileApps) + bytesIn(wifiApps);
+  }
+
+  /// Données consommées par heure passée dans l'application.
+  int? perHourOf(AppUsage app) {
+    final time = screenTimeOf(app);
+    return time == null ? null : bytesPerHour(totalBytesOf(app), time);
+  }
 
   /// Évolution d'une application par rapport à la période précédente.
   double? variationOf(AppUsage app, NetworkKind network) {
@@ -72,6 +98,17 @@ class UsageSnapshot {
         : totals.wifiBytes;
     return device != null && device >= sum ? device : sum;
   }
+}
+
+/// Données par heure d'utilisation. Null sous [minTime] d'écran : quelques
+/// minutes ne suffisent pas à estimer un rythme.
+int? bytesPerHour(
+  int bytes,
+  Duration time, {
+  Duration minTime = const Duration(minutes: 10),
+}) {
+  if (time < minTime || bytes <= 0) return null;
+  return (bytes * Duration.millisecondsPerHour / time.inMilliseconds).round();
 }
 
 /// Variation relative entre deux volumes. Null quand la référence est trop
@@ -372,6 +409,10 @@ class AppController extends ChangeNotifier {
           _source.deviceTotals(planRange.start, planRange.end),
       ]);
       final previousResults = await Future.wait([previousMobile, previousWifi]);
+      final screenTime = await _source
+          .screenTime(range.start, range.end)
+          .then<Map<String, Duration>?>((m) => m)
+          .catchError((Object _) => null);
       if (id != _requestId) return;
 
       final totals = results[0] as DeviceTotals;
@@ -384,6 +425,7 @@ class AppController extends ChangeNotifier {
         fetchedAt: now,
         previousMobile: previousResults[0],
         previousWifi: previousResults[1],
+        screenTime: screenTime,
       );
       if (currentPlan == null) {
         planUsage = null;

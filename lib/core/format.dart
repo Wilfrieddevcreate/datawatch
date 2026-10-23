@@ -73,6 +73,17 @@ SizeParts sizeParts(int bytes, {UnitMode? units}) {
 String formatBytes(int bytes, {UnitMode? units}) =>
     sizeParts(bytes, units: units).toString();
 
+/// Temps d'écran : « 4 h 40 », « 45 min », « < 1 min ».
+String formatScreenTime(Duration d) {
+  if (d.inMinutes < 1) return '<${nbsp}1${nbsp}min';
+  if (d.inHours == 0) return '${d.inMinutes}${nbsp}min';
+  final minutes = (d.inMinutes % 60).toString().padLeft(2, '0');
+  return '${d.inHours}${nbsp}h$nbsp$minutes';
+}
+
+/// Débit par heure d'utilisation : « 1,05 Go/h », « 590 Mo/h ».
+String formatPerHour(int bytesPerHour) => '${formatBytes(bytesPerHour)}/h';
+
 /// « 33 % », ou « < 1 % » pour une part non nulle mais minuscule.
 String formatShare(double fraction) {
   if (fraction > 0 && fraction < 0.01) return '<${nbsp}1$nbsp%';
