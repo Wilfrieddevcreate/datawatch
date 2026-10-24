@@ -1,0 +1,22 @@
+# Site statique Render : la politique de confidentialité de DataWatch, dont le
+# Play Store demande l'adresse. Render publie le dossier docs/ tel quel.
+services:
+  - type: web
+    runtime: static
+    name: datawatch
+    # Rien à compiler : on vérifie seulement que la page est bien là.
+    buildCommand: test -f docs/politique-de-confidentialite.html
+    staticPublishPath: ./docs
+    # Seules les modifications du site relancent un déploiement, pas celles
+    # de l'application.
+    buildFilter:
+      paths:
+        - docs/**
+        - render.yaml
+    routes:
+      - type: rewrite
+        source: /confidentialite
+        destination: /politique-de-confidentialite.html
+      - type: redirect
+        source: /
+        destination: /confidentialite
