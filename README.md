@@ -71,6 +71,24 @@ changement ; le Worker n'a donc pas besoin de Flutter pour tourner.
 - les paramètres signalent si l'économie d'énergie d'Android peut retarder
   les alertes, fréquent sur les TECNO, Infinix et itel.
 
+## Play Store
+
+Tout ce qu'il faut pour la fiche est dans `store/play/` : textes, réponses aux
+formulaires de la Console (`fiche-play-store.md`), icône, image de
+présentation et captures. Pour régénérer les visuels :
+
+```
+python3 tool/promo/make_icons.py
+flutter test tool/store/capture_test.dart --update-goldens   # écrans de l'app
+node tool/store/render.mjs                                   # mise en scène
+```
+
+Le bundle à envoyer : `flutter build appbundle --release`. Il est signé avec
+la clé d'importation (`android/upload-keystore.jks`, décrite par
+`android/key.properties`), hors du dépôt : **sauvegardez ces deux fichiers**
+(gestionnaire de mots de passe, clé USB). Sans eux, la version release est
+signée avec la clé de debug et refusée par le Play Store.
+
 ## Organisation
 
 ```
@@ -118,9 +136,9 @@ lib/
 ## Confidentialité
 
 La version de publication ne demande pas l'accès à Internet. La politique de
-confidentialité est dans l'application (Paramètres) et en page web à publier
-sur alopro.net : `docs/politique-de-confidentialite.html`. Contact :
-hello@alopro.net.
+confidentialité est dans l'application (Paramètres) et en page web :
+`docs/politique-de-confidentialite.html`, publiée par Render comme site statique
+(`render.yaml`, adresse `/confidentialite`). Contact : hello@alopro.net.
 
 ## Polices
 

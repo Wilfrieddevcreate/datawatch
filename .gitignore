@@ -50,3 +50,6 @@ app.*.map.json
 # Ressources générées pour la vidéo de présentation
 /tool/promo/assets/
 /tool/promo/out/
+
+# Captures générées pour la fiche Play Store
+/tool/store/assets/

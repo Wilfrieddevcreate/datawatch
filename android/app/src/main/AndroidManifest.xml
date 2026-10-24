@@ -16,6 +16,12 @@
     <!-- Notifications des seuils d'alerte (demandée à l'exécution sur Android 13+). -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <!-- Ajoutée par WorkManager pour les tâches au premier plan : le Worker des
+         alertes n'en lance pas, la permission est donc inutile. -->
+    <uses-permission
+        android:name="android.permission.FOREGROUND_SERVICE"
+        tools:node="remove" />
+
     <application
         android:label="DataWatch"
         android:name="${applicationName}"

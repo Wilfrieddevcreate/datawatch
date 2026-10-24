@@ -46,7 +46,7 @@ void main() {
     test('part du forfait quand il est connu', () {
       expect(
         hourCostLine('TikTok', 512 * mo, 5 * go),
-        'Une heure de TikTok ≈ ${formatBytes(512 * mo)}, soit 10${nbsp}% de votre forfait.',
+        'Une heure de TikTok ≈ ${formatBytes(512 * mo)}, soit 10$nbsp% de votre forfait.',
       );
     });
 
