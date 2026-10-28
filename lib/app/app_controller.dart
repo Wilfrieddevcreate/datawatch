@@ -208,23 +208,37 @@ class AppController extends ChangeNotifier {
       settings.notificationsEnabled && device.notificationsAllowed;
 
   Future<void> init() async {
-    plan = await _store.load();
-    settings = await _settingsStore.load();
-    displayUnits = settings.units;
-    await _syncAlerts();
+    var restored = true;
+    try {
+      plan = await _store.load().timeout(_readTimeout);
+      settings = await _settingsStore.load().timeout(_readTimeout);
+      displayUnits = settings.units;
+    } catch (e) {
+      // Stockage illisible : on démarre sans forfait plutôt que de rester sur
+      // un écran vide, et on ne touche pas aux alertes déjà planifiées.
+      restored = false;
+      debugPrint('DataWatch : stockage local illisible au lancement ($e)');
+    }
+    if (restored) await _syncAlerts();
     await recheckAccess();
   }
+
+  static const _readTimeout = Duration(seconds: 5);
 
   /// À appeler au lancement et à chaque retour au premier plan : l'accès et
   /// les autorisations ont pu changer dans les paramètres Android.
   Future<void> recheckAccess() async {
-    usageAccessGranted = await _source.hasUsageAccess();
+    usageAccessGranted = await _guardDevice(
+      _source.hasUsageAccess,
+      fallback: false,
+    );
     phonePermissionNeeded = await _guardDevice(
       _services.phonePermissionNeeded,
       fallback: false,
     );
     final granted = usageAccessGranted && !phonePermissionNeeded;
     access = granted ? AccessState.granted : AccessState.denied;
+    notifyListeners();
     await refreshDeviceStatus();
     if (granted) await refresh();
   }
