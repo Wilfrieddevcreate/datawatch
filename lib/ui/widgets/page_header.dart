@@ -1,14 +1,12 @@
-import 'dart:ui' as ui;
-
 import 'package:flutter/material.dart';
 
 import '../theme/tokens.dart';
 import '../theme/typography.dart';
 
 /// Page d'onglet avec l'en-tête DataWatch :
-/// - une barre fixe (logo, actions) qui se floute et affiche un titre compact
-///   dès que le contenu passe dessous ;
-/// - un grand titre propre à la page, avec sa ligne de contexte et son sous-titre.
+/// - une barre fixe (marque ou retour, actions) qui se pose sur le contenu
+///   dès qu'il défile et affiche alors un titre compact ;
+/// - un grand titre condensé, sa ligne de contexte et son sous-titre.
 class DwPage extends StatefulWidget {
   const DwPage({
     super.key,
@@ -21,20 +19,21 @@ class DwPage extends StatefulWidget {
     this.titleLeading,
     this.actions = const [],
     this.onRefresh,
+    this.largeTitle = true,
     this.padding = const EdgeInsets.fromLTRB(16, 0, 16, 32),
   });
 
   final String title;
   final List<Widget> children;
 
-  /// Contexte en petites capitales au-dessus du titre (date, période…).
+  /// Contexte au-dessus du titre (période, date…), en minuscules.
   final String? overline;
   final Widget? subtitle;
 
   /// Titre affiché dans la barre une fois le grand titre défilé (par défaut : [title]).
   final String? compactTitle;
 
-  /// À gauche de la barre : le logo par défaut, un bouton retour sur une
+  /// À gauche de la barre : la marque par défaut, un bouton retour sur une
   /// page secondaire ([DwBackButton]).
   final Widget? leading;
 
@@ -42,9 +41,12 @@ class DwPage extends StatefulWidget {
   final Widget? titleLeading;
   final List<Widget> actions;
   final Future<void> Function()? onRefresh;
+
+  /// Faux : pas de grand titre, le contenu commence sous la barre.
+  final bool largeTitle;
   final EdgeInsetsGeometry padding;
 
-  static const double barHeight = 60;
+  static const double barHeight = 56;
 
   @override
   State<DwPage> createState() => _DwPageState();
@@ -75,15 +77,16 @@ class _DwPageState extends State<DwPage> {
       physics: const AlwaysScrollableScrollPhysics(),
       slivers: [
         SliverToBoxAdapter(child: SizedBox(height: top + DwPage.barHeight)),
-        SliverToBoxAdapter(
-          child: _LargeTitle(
-            title: widget.title,
-            overline: widget.overline,
-            subtitle: widget.subtitle,
-            leading: widget.titleLeading,
-            offset: _offset,
+        if (widget.largeTitle)
+          SliverToBoxAdapter(
+            child: _LargeTitle(
+              title: widget.title,
+              overline: widget.overline,
+              subtitle: widget.subtitle,
+              leading: widget.titleLeading,
+              offset: _offset,
+            ),
           ),
-        ),
         SliverPadding(
           padding: widget.padding,
           sliver: SliverList.list(children: widget.children),
@@ -99,6 +102,7 @@ class _DwPageState extends State<DwPage> {
           RefreshIndicator(
             onRefresh: widget.onRefresh!,
             edgeOffset: top + DwPage.barHeight,
+            color: context.dw.text,
             child: scrollView,
           ),
         Positioned(
@@ -111,7 +115,8 @@ class _DwPageState extends State<DwPage> {
               topInset: top,
               offset: offset,
               title: widget.compactTitle ?? widget.title,
-              leading: widget.leading ?? const DwMark(),
+              showTitleFrom: widget.largeTitle ? 44 : 120,
+              leading: widget.leading ?? const DwWordmark(),
               actions: widget.actions,
             ),
           ),
@@ -126,6 +131,7 @@ class _TopBar extends StatelessWidget {
     required this.topInset,
     required this.offset,
     required this.title,
+    required this.showTitleFrom,
     required this.leading,
     required this.actions,
   });
@@ -133,28 +139,28 @@ class _TopBar extends StatelessWidget {
   final double topInset;
   final double offset;
   final String title;
+  final double showTitleFrom;
   final Widget leading;
   final List<Widget> actions;
 
   @override
   Widget build(BuildContext context) {
     final c = context.dw;
-    // Le fond apparaît dès le premier défilement, le titre compact quand le
-    // grand titre passe sous la barre.
+    // Le fond et le filet apparaissent dès le premier défilement, le titre
+    // compact quand le grand titre passe sous la barre.
     final surface = (offset / 16).clamp(0.0, 1.0);
-    final titleIn = ((offset - 44) / 24).clamp(0.0, 1.0);
+    final titleIn = ((offset - showTitleFrom) / 24).clamp(0.0, 1.0);
 
-    final bar = Container(
+    return Container(
       height: topInset + DwPage.barHeight,
-      padding: EdgeInsets.only(top: topInset, left: 16, right: 12),
+      padding: EdgeInsets.only(top: topInset, left: 16, right: 6),
       decoration: BoxDecoration(
-        color: c.background.withValues(alpha: 0.82 * surface),
+        color: c.background.withValues(alpha: surface),
         border: Border(
           bottom: BorderSide(color: c.divider.withValues(alpha: surface)),
         ),
       ),
       child: NavigationToolbar(
-        // La barre impose sa hauteur : on recentre le logo à sa taille propre.
         leading: Align(
           alignment: Alignment.centerLeft,
           widthFactor: 1,
@@ -165,14 +171,17 @@ class _TopBar extends StatelessWidget {
         middle: Opacity(
           opacity: titleIn,
           child: Transform.translate(
-            offset: Offset(0, 8 * (1 - titleIn)),
+            offset: Offset(0, 6 * (1 - titleIn)),
             child: Text(
               title,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium!.copyWith(fontSize: 16),
+              style: DwFonts.style(
+                DwFonts.display,
+                18,
+                700,
+                letterSpacing: -0.4,
+              ),
             ),
           ),
         ),
@@ -180,19 +189,11 @@ class _TopBar extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             for (final (i, a) in actions.indexed) ...[
-              if (i > 0) const SizedBox(width: 8),
+              if (i > 0) const SizedBox(width: 2),
               a,
             ],
           ],
         ),
-      ),
-    );
-
-    if (surface == 0) return bar;
-    return ClipRect(
-      child: BackdropFilter(
-        filter: ui.ImageFilter.blur(sigmaX: 20 * surface, sigmaY: 20 * surface),
-        child: bar,
       ),
     );
   }
@@ -218,16 +219,13 @@ class _LargeTitle extends StatelessWidget {
     final c = context.dw;
     final t = Theme.of(context).textTheme;
     final content = Padding(
-      padding: const EdgeInsets.fromLTRB(16, 6, 16, 22),
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (overline != null) ...[
-            Text(
-              overline!.toUpperCase(),
-              style: DwFonts.overline(c.textSecondary),
-            ),
-            const SizedBox(height: 8),
+            Text(overline!, style: DwFonts.label(c.textSecondary)),
+            const SizedBox(height: 6),
           ],
           Row(
             children: [
@@ -237,29 +235,23 @@ class _LargeTitle extends StatelessWidget {
                   header: true,
                   child: Text(
                     title,
-                    style: DwFonts.style(
-                      DwFonts.display,
-                      36,
-                      700,
-                      height: 1.02,
-                      letterSpacing: -1.4,
-                    ).copyWith(color: c.text),
+                    style: DwFonts.title(36).copyWith(color: c.text),
                   ),
                 ),
               ),
             ],
           ),
           if (subtitle != null) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             DefaultTextStyle.merge(
-              style: t.bodyLarge!.copyWith(color: c.textSecondary, height: 1.4),
+              style: t.bodyMedium!.copyWith(color: c.textSecondary),
               child: subtitle!,
             ),
           ],
         ],
       ),
     );
-    // Le grand titre s'efface en douceur en passant sous la barre.
+    // Le grand titre s'efface en passant sous la barre.
     return ValueListenableBuilder<double>(
       valueListenable: offset,
       builder: (context, o, child) =>
@@ -269,43 +261,35 @@ class _LargeTitle extends StatelessWidget {
   }
 }
 
-/// Le logo DataWatch : un petit réservoir rempli de lime.
+/// Le logo DataWatch : un petit réservoir, encre et lime.
 class DwMark extends StatelessWidget {
-  const DwMark({super.key, this.size = 32});
+  const DwMark({super.key, this.height = 26, this.ink, this.water});
 
-  final double size;
+  final double height;
+  final Color? ink;
+  final Color? water;
 
   @override
   Widget build(BuildContext context) {
     final c = context.dw;
-    final isLight = Theme.of(context).brightness == Brightness.light;
+    final w = height * 18 / 26;
     return Semantics(
       label: 'DataWatch',
       image: true,
       child: Container(
-        width: size,
-        height: size,
+        width: w,
+        height: height,
+        padding: EdgeInsets.all(w / 6),
+        alignment: Alignment.bottomCenter,
         decoration: BoxDecoration(
-          color: isLight ? c.strong : c.surface,
-          borderRadius: BorderRadius.circular(size * 0.3),
-          border: isLight ? null : Border.all(color: c.divider),
+          color: ink ?? c.strong,
+          borderRadius: BorderRadius.circular(height * 0.23),
         ),
-        alignment: Alignment.center,
         child: Container(
-          width: size * 0.36,
-          height: size * 0.58,
-          padding: EdgeInsets.all(size * 0.05),
-          alignment: Alignment.bottomCenter,
+          height: height * 0.35,
           decoration: BoxDecoration(
-            color: const Color(0xFF2A303C),
-            borderRadius: BorderRadius.circular(size * 0.1),
-          ),
-          child: Container(
-            height: size * 0.26,
-            decoration: BoxDecoration(
-              color: c.accent,
-              borderRadius: BorderRadius.circular(size * 0.06),
-            ),
+            color: water ?? c.accent,
+            borderRadius: BorderRadius.circular(height * 0.11),
           ),
         ),
       ),
@@ -313,7 +297,38 @@ class DwMark extends StatelessWidget {
   }
 }
 
-/// Bouton rond de la barre d'en-tête, avec pastille optionnelle.
+/// La marque : le logo et le nom.
+class DwWordmark extends StatelessWidget {
+  const DwWordmark({super.key, this.color});
+
+  /// Couleur du nom et du logo (texte par défaut) ; sur fond sombre, le texte clair.
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.dw;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        DwMark(ink: color ?? c.strong),
+        const SizedBox(width: 10),
+        ExcludeSemantics(
+          child: Text(
+            'DataWatch',
+            style: DwFonts.style(
+              DwFonts.display,
+              21,
+              700,
+              letterSpacing: -0.4,
+            ).copyWith(color: color ?? c.text),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Bouton de la barre d'en-tête : l'icône seule, avec pastille optionnelle.
 class DwHeaderButton extends StatelessWidget {
   const DwHeaderButton({
     super.key,
@@ -321,6 +336,8 @@ class DwHeaderButton extends StatelessWidget {
     required this.tooltip,
     required this.onPressed,
     this.badgeColor,
+    this.color,
+    this.badgeBorder,
   });
 
   final IconData icon;
@@ -329,6 +346,8 @@ class DwHeaderButton extends StatelessWidget {
 
   /// Pastille en haut à droite (alerte en cours), absente si null.
   final Color? badgeColor;
+  final Color? color;
+  final Color? badgeBorder;
 
   @override
   Widget build(BuildContext context) {
@@ -339,19 +358,13 @@ class DwHeaderButton extends StatelessWidget {
         IconButton(
           onPressed: onPressed,
           tooltip: tooltip,
-          style: IconButton.styleFrom(
-            backgroundColor: c.surface,
-            fixedSize: const Size(44, 44),
-            side: Theme.of(context).brightness == Brightness.dark
-                ? BorderSide(color: c.divider)
-                : null,
-          ),
-          icon: Icon(icon, color: c.text, size: 21),
+          style: IconButton.styleFrom(fixedSize: const Size(44, 44)),
+          icon: Icon(icon, color: color ?? c.text, size: 22),
         ),
         if (badgeColor != null)
           Positioned(
-            top: 9,
-            right: 10,
+            top: 8,
+            right: 9,
             child: IgnorePointer(
               child: Container(
                 width: 10,
@@ -359,7 +372,10 @@ class DwHeaderButton extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: badgeColor,
                   shape: BoxShape.circle,
-                  border: Border.all(color: c.surface, width: 2),
+                  border: Border.all(
+                    color: badgeBorder ?? c.background,
+                    width: 2,
+                  ),
                 ),
               ),
             ),
@@ -375,10 +391,13 @@ class DwBackButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DwHeaderButton(
-      icon: Icons.arrow_back_rounded,
-      tooltip: 'Retour',
-      onPressed: () => Navigator.of(context).maybePop(),
+    return Transform.translate(
+      offset: const Offset(-10, 0),
+      child: DwHeaderButton(
+        icon: Icons.arrow_back,
+        tooltip: 'Retour',
+        onPressed: () => Navigator.of(context).maybePop(),
+      ),
     );
   }
 }

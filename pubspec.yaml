@@ -2,7 +2,7 @@ name: datawatch
 description: "Suivi de consommation de données mobiles"
 publish_to: 'none'
 
-version: 1.1.0+2
+version: 1.2.0+4
 
 environment:
   sdk: ^3.12.2
@@ -32,6 +32,3 @@ flutter:
     - family: Geist
       fonts:
         - asset: assets/fonts/Geist.ttf
-    - family: GeistMono
-      fonts:
-        - asset: assets/fonts/GeistMono.ttf

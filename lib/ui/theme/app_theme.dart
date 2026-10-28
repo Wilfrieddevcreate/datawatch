@@ -25,9 +25,8 @@ ThemeData buildTheme(Brightness brightness) {
     outlineVariant: c.divider,
   );
 
-  final pill = RoundedRectangleBorder(
-    borderRadius: BorderRadius.circular(DwRadius.pill),
-  );
+  RoundedRectangleBorder rounded(double r) =>
+      RoundedRectangleBorder(borderRadius: BorderRadius.circular(r));
 
   return ThemeData(
     useMaterial3: true,
@@ -37,55 +36,26 @@ ThemeData buildTheme(Brightness brightness) {
     fontFamily: DwFonts.body,
     textTheme: text,
     extensions: [c],
+    splashColor: c.text.withValues(alpha: 0.06),
+    highlightColor: c.text.withValues(alpha: 0.04),
     dividerTheme: DividerThemeData(color: c.divider, thickness: 1, space: 1),
-    appBarTheme: AppBarTheme(
-      backgroundColor: c.background,
-      foregroundColor: c.text,
-      elevation: 0,
-      scrolledUnderElevation: 0,
-      titleTextStyle: text.headlineSmall,
-    ),
-    navigationBarTheme: NavigationBarThemeData(
-      height: 80,
-      backgroundColor: c.surface,
-      surfaceTintColor: Colors.transparent,
-      indicatorColor: c.accent,
-      indicatorShape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
-      labelTextStyle: WidgetStateProperty.resolveWith(
-        (states) => text.labelMedium!
-            .weight(states.contains(WidgetState.selected) ? 600 : 500)
-            .copyWith(
-              color: states.contains(WidgetState.selected)
-                  ? c.text
-                  : c.textSecondary,
-            ),
-      ),
-      iconTheme: WidgetStateProperty.resolveWith(
-        (states) => IconThemeData(
-          size: 22,
-          color: states.contains(WidgetState.selected)
-              ? c.onAccent
-              : c.textSecondary,
-        ),
-      ),
-    ),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
         backgroundColor: c.strong,
         foregroundColor: c.onStrong,
         minimumSize: const Size(64, 56),
-        shape: pill,
-        textStyle: text.labelLarge,
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        shape: rounded(DwRadius.md),
+        textStyle: text.labelLarge!.copyWith(fontSize: 16),
       ),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
         foregroundColor: c.text,
         minimumSize: const Size(64, 48),
+        padding: const EdgeInsets.symmetric(horizontal: 16),
         side: BorderSide(color: c.strong, width: 1.5),
-        shape: pill,
+        shape: rounded(DwRadius.md),
         textStyle: text.labelLarge!.copyWith(fontSize: 14),
       ),
     ),
@@ -93,8 +63,14 @@ ThemeData buildTheme(Brightness brightness) {
       style: TextButton.styleFrom(
         foregroundColor: c.text,
         minimumSize: const Size(48, 44),
-        shape: pill,
+        shape: rounded(DwRadius.sm),
         textStyle: text.labelLarge!.copyWith(fontSize: 14),
+      ),
+    ),
+    iconButtonTheme: IconButtonThemeData(
+      style: IconButton.styleFrom(
+        foregroundColor: c.text,
+        shape: rounded(DwRadius.sm),
       ),
     ),
     switchTheme: SwitchThemeData(
@@ -106,29 +82,54 @@ ThemeData buildTheme(Brightness brightness) {
       ),
       trackOutlineColor: const WidgetStatePropertyAll(Colors.transparent),
     ),
+    sliderTheme: SliderThemeData(
+      activeTrackColor: c.strong,
+      inactiveTrackColor: c.track,
+      thumbColor: c.accent,
+      overlayColor: c.accent.withValues(alpha: 0.18),
+      valueIndicatorColor: c.strong,
+      valueIndicatorTextStyle: text.labelMedium!.copyWith(color: c.onStrong),
+    ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: c.surfaceMuted,
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(DwRadius.md),
+        borderRadius: BorderRadius.circular(DwRadius.sm),
         borderSide: BorderSide(color: c.divider),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(DwRadius.md),
+        borderRadius: BorderRadius.circular(DwRadius.sm),
         borderSide: BorderSide(color: c.divider),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(DwRadius.md),
-        borderSide: BorderSide(color: c.wifi, width: 2),
+        borderRadius: BorderRadius.circular(DwRadius.sm),
+        borderSide: BorderSide(color: c.strong, width: 2),
       ),
+    ),
+    dialogTheme: DialogThemeData(
+      backgroundColor: c.surface,
+      surfaceTintColor: Colors.transparent,
+      shape: rounded(DwRadius.lg + 4),
+      titleTextStyle: text.headlineSmall!.copyWith(fontSize: 26),
+      contentTextStyle: text.bodyLarge!.copyWith(color: c.textSecondary),
+    ),
+    datePickerTheme: DatePickerThemeData(
+      backgroundColor: c.surface,
+      surfaceTintColor: Colors.transparent,
+      shape: rounded(DwRadius.lg + 4),
+      headerHeadlineStyle: text.headlineSmall,
+    ),
+    timePickerTheme: TimePickerThemeData(
+      backgroundColor: c.surface,
+      shape: rounded(DwRadius.lg + 4),
+      hourMinuteShape: rounded(DwRadius.sm),
+      dayPeriodShape: rounded(DwRadius.sm),
     ),
     snackBarTheme: SnackBarThemeData(
       behavior: SnackBarBehavior.floating,
       backgroundColor: c.strong,
       contentTextStyle: text.bodyLarge!.copyWith(color: c.onStrong),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(DwRadius.md),
-      ),
+      shape: rounded(DwRadius.md),
     ),
     progressIndicatorTheme: ProgressIndicatorThemeData(color: c.text),
   );

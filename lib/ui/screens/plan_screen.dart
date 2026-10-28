@@ -9,15 +9,15 @@ import '../../domain/data_plan.dart';
 import '../theme/tokens.dart';
 import '../theme/typography.dart';
 import '../widgets/page_header.dart';
-import '../widgets/segmented.dart';
-import '../widgets/usage_row.dart';
+import '../widgets/primitives.dart';
+import '../widgets/text_tabs.dart';
 
 enum VolumeUnit { mo, go }
 
 /// Choix rapide des seuils d'alerte.
 enum ThresholdPreset {
-  everyTwenty('Tous les 20\u00A0%', DataPlan.everyTwentyThresholds),
-  classic('50 · 80 · 100\u00A0%', DataPlan.classicThresholds);
+  everyTwenty('Tous les 20 %', DataPlan.everyTwentyThresholds),
+  classic('50 · 80 · 100 %', DataPlan.classicThresholds);
 
   const ThresholdPreset(this.label, this.thresholds);
   final String label;
@@ -53,7 +53,7 @@ enum Validity {
 /// Volume saisi (« 5 », « 1,5 », « 5 120 ») converti en octets.
 int? parseVolume(String text, VolumeUnit unit) {
   final cleaned = text
-      .replaceAll(RegExp(r'[\s\u00A0]'), '')
+      .replaceAll(RegExp(r'[\s ]'), '')
       .replaceAll(',', '.');
   final value = double.tryParse(cleaned);
   if (value == null || value <= 0) return null;
@@ -67,6 +67,9 @@ int? parseVolume(String text, VolumeUnit unit) {
 String volumeText(int bytes, VolumeUnit unit) => unit == VolumeUnit.go
     ? formatNumber(bytes / DataUnits.bytesPerGo)
     : formatNumber(bytes / DataUnits.bytesPerMo, maxDecimals: 0);
+
+/// Le blanc de la phrase en cours d'édition.
+enum _Blank { operator, volume, validity }
 
 class PlanScreen extends StatefulWidget {
   const PlanScreen({super.key, required this.actions, required this.onSaved});
@@ -82,6 +85,7 @@ class _PlanScreenState extends State<PlanScreen> {
   static const _presets = [
     500 * DataUnits.bytesPerMo,
     DataUnits.bytesPerGo,
+    2 * DataUnits.bytesPerGo,
     5 * DataUnits.bytesPerGo,
     10 * DataUnits.bytesPerGo,
   ];
@@ -96,6 +100,8 @@ class _PlanScreenState extends State<PlanScreen> {
   ThresholdPreset _preset = ThresholdPreset.everyTwenty;
   bool _recurring = false;
   String? _volumeError;
+  _Blank _blank = _Blank.volume;
+  bool _customVolume = false;
 
   DataPlan? _loadedFrom;
   bool _initialized = false;
@@ -117,6 +123,7 @@ class _PlanScreenState extends State<PlanScreen> {
       _operator = Operator.mtn;
       _unit = VolumeUnit.go;
       _volume.text = '';
+      _customVolume = false;
       _start = _nowMinute();
       _validity = Validity.week;
       _customEnd = null;
@@ -130,6 +137,7 @@ class _PlanScreenState extends State<PlanScreen> {
         ? VolumeUnit.go
         : VolumeUnit.mo;
     _volume.text = volumeText(plan.volumeBytes, _unit);
+    _customVolume = !_presets.contains(plan.volumeBytes);
     _start = plan.start;
     _validity = Validity.of(plan.validity);
     _customEnd = _validity == Validity.custom ? plan.end : null;
@@ -168,6 +176,7 @@ class _PlanScreenState extends State<PlanScreen> {
     setState(() {
       _unit = bytes >= DataUnits.bytesPerGo ? VolumeUnit.go : VolumeUnit.mo;
       _volume.text = volumeText(bytes, _unit);
+      _customVolume = false;
       _volumeError = null;
     });
   }
@@ -230,7 +239,11 @@ class _PlanScreenState extends State<PlanScreen> {
     final bytes = _volumeBytes;
     final end = _end;
     if (bytes == null) {
-      setState(() => _volumeError = 'Indiquez le volume de votre forfait.');
+      setState(() {
+        _blank = _Blank.volume;
+        _customVolume = true;
+        _volumeError = 'Indiquez le volume de votre forfait.';
+      });
       return null;
     }
     if (end == null || !end.isAfter(_start)) {
@@ -285,15 +298,7 @@ class _PlanScreenState extends State<PlanScreen> {
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  '$value$nbsp%',
-                  style: DwFonts.style(
-                    DwFonts.display,
-                    40,
-                    700,
-                    letterSpacing: -1.2,
-                  ),
-                ),
+                Text('$value$nbsp%', style: DwFonts.hero(44)),
                 Slider(
                   value: value.toDouble(),
                   min: 10,
@@ -329,6 +334,17 @@ class _PlanScreenState extends State<PlanScreen> {
       ),
     );
     if (picked != null) setState(() => _thresholds = {..._thresholds, picked});
+  }
+
+  void _toggleThreshold(int pct) {
+    HapticFeedback.selectionClick();
+    setState(() {
+      if (_thresholds.contains(pct)) {
+        _thresholds = _thresholds.where((t) => t != pct).toSet();
+      } else {
+        _thresholds = {..._thresholds, pct};
+      }
+    });
   }
 
   Future<void> _restartNow() async {
@@ -377,283 +393,282 @@ class _PlanScreenState extends State<PlanScreen> {
     final hasPlan = saved != null;
     final bytes = _volumeBytes;
     final end = _end;
+    final marks = ({..._preset.thresholds, ..._thresholds}.toList()..sort());
 
     return DwPage(
       title: 'Mon forfait',
       overline: saved == null
-          ? 'Aucun forfait déclaré'
+          ? null
           : '${saved.operator.label} · ${formatBytes(saved.volumeBytes)} · ${saved.isExpired(now) ? 'expiré' : 'actif'}',
       subtitle: Text(
         saved == null
-            ? 'Déclarez votre forfait pour suivre ce qu’il reste.'
+            ? 'Dites ce que vous avez acheté, DataWatch estime le reste.'
             : saved.isExpired(now)
             ? 'Expiré le ${formatDayMonthTime(saved.end)}. Démarrez un nouveau suivi après votre recharge.'
             : 'Expire dans ${formatRemaining(saved.end.difference(now))}, le ${formatDayMonthTime(saved.end)}.',
       ),
       actions: widget.actions,
       children: [
-        _Section(
-          title: 'Opérateur',
-          child: DwSegmented<Operator>(
-            values: Operator.values,
-            selected: _operator,
-            fontSize: 14,
-            trackColor: c.background,
-            labelOf: (o) => o.label,
-            onChanged: (o) => setState(() => _operator = o),
-          ),
-        ),
-        const SizedBox(height: 12),
-
-        _Section(
-          title: 'Volume du forfait',
-          trailing: DwSegmented<VolumeUnit>(
-            values: VolumeUnit.values,
-            selected: _unit,
-            expand: false,
-            height: 32,
-            trackColor: c.background,
-            labelOf: (u) => u == VolumeUnit.go ? 'Go' : 'Mo',
-            onChanged: _setUnit,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              TextField(
-                controller: _volume,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
+        DwReveal(
+          child: DwSheet(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _Sentence(
+                  operator: _operator.label,
+                  volume: bytes == null ? '…' : formatBytes(bytes),
+                  start:
+                      '${formatDayMonth(_start)} à ${formatTime(_start)}',
+                  validity: _validity == Validity.custom
+                      ? (end == null
+                            ? 'une date au choix'
+                            : 'jusqu’au ${formatDayMonthTime(end)}')
+                      : _validity.label,
+                  active: _blank,
+                  onOperator: () => setState(() => _blank = _Blank.operator),
+                  onVolume: () => setState(() => _blank = _Blank.volume),
+                  onStart: _pickStart,
+                  onValidity: () => setState(() => _blank = _Blank.validity),
                 ),
-                inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp(r'[0-9,.\s]')),
-                ],
-                onChanged: (_) => setState(() => _volumeError = null),
-                style: DwFonts.style(
-                  DwFonts.display,
-                  52,
-                  700,
-                  letterSpacing: -2,
-                  tabular: true,
-                ),
-                decoration: InputDecoration(
-                  hintText: '0',
-                  errorText: _volumeError,
-                  filled: false,
-                  isDense: true,
-                  contentPadding: const EdgeInsets.only(bottom: 4),
-                  suffixText: _unit == VolumeUnit.go ? 'Go' : 'Mo',
-                  suffixStyle: DwFonts.style(
-                    DwFonts.display,
-                    24,
-                    600,
-                  ).copyWith(color: c.text),
-                  border: UnderlineInputBorder(
-                    borderSide: BorderSide(color: c.strong, width: 2),
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.only(top: 14),
+                  decoration: BoxDecoration(
+                    border: Border(top: BorderSide(color: c.divider)),
                   ),
-                  enabledBorder: UnderlineInputBorder(
-                    borderSide: BorderSide(color: c.strong, width: 2),
-                  ),
-                  focusedBorder: UnderlineInputBorder(
-                    borderSide: BorderSide(color: c.wifi, width: 2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                bytes == null
-                    ? '1${nbsp}Go = 1${nbsp}024${nbsp}Mo'
-                    : _unit == VolumeUnit.go
-                    ? '= ${formatThousands((bytes / DataUnits.bytesPerMo).round())}${nbsp}Mo · 1${nbsp}Go = 1${nbsp}024${nbsp}Mo'
-                    : '= ${formatNumber(bytes / DataUnits.bytesPerGo)}${nbsp}Go · 1${nbsp}Go = 1${nbsp}024${nbsp}Mo',
-                style: DwFonts.style(
-                  DwFonts.mono,
-                  12,
-                  400,
-                ).copyWith(color: c.textSecondary),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  for (final (i, preset) in _presets.indexed) ...[
-                    if (i > 0) const SizedBox(width: 8),
-                    Expanded(
-                      child: _PresetButton(
-                        label: formatBytes(preset),
-                        selected: bytes == preset,
-                        onTap: () => _setPreset(preset),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        switch (_blank) {
+                          _Blank.operator => 'Opérateur',
+                          _Blank.volume => 'Volume du forfait',
+                          _Blank.validity => 'Validité',
+                        },
+                        style: t.bodySmall!.copyWith(color: c.textSecondary),
                       ),
-                    ),
-                  ],
-                ],
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 12),
-
-        _Section(
-          title: 'Période',
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _FieldButton(
-                icon: Icons.calendar_today_outlined,
-                label: 'Début',
-                value: '${formatDate(_start)} · ${formatTime(_start)}',
-                onTap: _pickStart,
-              ),
-              const SizedBox(height: 12),
-              Text(
-                'Validité',
-                style: t.bodySmall!.copyWith(color: c.textSecondary),
-              ),
-              const SizedBox(height: 8),
-              DwSegmented<Validity>(
-                values: Validity.values,
-                selected: _validity,
-                trackColor: c.background,
-                fontSize: 13.5,
-                labelOf: (v) => v.label,
-                onChanged: (v) => v == Validity.custom
-                    ? _pickCustomEnd()
-                    : setState(() => _validity = v),
-              ),
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 12,
-                ),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).brightness == Brightness.light
-                      ? const Color(0xFFF0FBCB)
-                      : c.positiveSoft,
-                  borderRadius: BorderRadius.circular(DwRadius.md),
-                ),
-                child: Row(
-                  children: [
-                    Expanded(child: Text('Fin du suivi', style: t.bodyMedium)),
-                    Text(
-                      end == null
-                          ? 'Choisir une date'
-                          : '${formatDate(end)} à ${formatTime(end)}',
-                      style: t.titleSmall,
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 12),
-
-        _Section(
-          title: 'Seuils d’alerte',
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              DwSegmented<ThresholdPreset>(
-                values: ThresholdPreset.values,
-                selected: _preset,
-                trackColor: c.background,
-                fontSize: 13.5,
-                labelOf: (p) => p.label,
-                onChanged: (p) => setState(() {
-                  _preset = p;
-                  _thresholds = {...p.thresholds};
-                }),
-              ),
-              const SizedBox(height: 4),
-              for (final pct in ({
-                ..._preset.thresholds,
-                ..._thresholds,
-              }.toList()..sort()))
-                _ThresholdRow(
-                  percent: pct,
-                  amount: bytes == null
-                      ? null
-                      : formatBytes(bytes * pct ~/ 100),
-                  enabled: _thresholds.contains(pct),
-                  onChanged: (on) => setState(() {
-                    _thresholds = on
-                        ? ({..._thresholds, pct})
-                        : (_thresholds.where((t) => t != pct).toSet());
-                  }),
-                  // Les seuils ajoutés se retirent ; ceux du choix rapide se désactivent.
-                  onRemove: _preset.thresholds.contains(pct)
-                      ? null
-                      : () => setState(
-                          () => _thresholds = _thresholds
-                              .where((t) => t != pct)
-                              .toSet(),
+                      const SizedBox(height: 8),
+                      switch (_blank) {
+                        _Blank.operator => DwChoiceWords<Operator>(
+                          values: Operator.values,
+                          selected: _operator,
+                          labelOf: (o) => o.label,
+                          onChanged: (o) => setState(() => _operator = o),
                         ),
-                ),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: TextButton.icon(
-                  onPressed: _addThreshold,
-                  style: TextButton.styleFrom(
-                    foregroundColor: c.wifi,
-                    padding: EdgeInsets.zero,
+                        _Blank.validity => DwChoiceWords<Validity>(
+                          values: Validity.values,
+                          selected: _validity,
+                          labelOf: (v) => v.label,
+                          onChanged: (v) => v == Validity.custom
+                              ? _pickCustomEnd()
+                              : setState(() => _validity = v),
+                        ),
+                        _Blank.volume => Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            DwChoiceWords<int?>(
+                              values: [..._presets, null],
+                              selected: _customVolume
+                                  ? null
+                                  : (_presets.contains(bytes) ? bytes : -1),
+                              labelOf: (b) =>
+                                  b == null ? 'Autre…' : formatBytes(b),
+                              onChanged: (b) => b == null
+                                  ? setState(() => _customVolume = true)
+                                  : _setPreset(b),
+                            ),
+                            if (_customVolume) ...[
+                              const SizedBox(height: 10),
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Expanded(
+                                    child: TextField(
+                                      controller: _volume,
+                                      autofocus: _volume.text.isEmpty,
+                                      keyboardType:
+                                          const TextInputType.numberWithOptions(
+                                            decimal: true,
+                                          ),
+                                      inputFormatters: [
+                                        FilteringTextInputFormatter.allow(
+                                          RegExp(r'[0-9,.\s]'),
+                                        ),
+                                      ],
+                                      onChanged: (_) =>
+                                          setState(() => _volumeError = null),
+                                      style: DwFonts.hero(44),
+                                      decoration: InputDecoration(
+                                        hintText: '0',
+                                        hintStyle: TextStyle(color: c.track),
+                                        errorText: _volumeError,
+                                        filled: false,
+                                        isDense: true,
+                                        contentPadding: const EdgeInsets.only(
+                                          bottom: 6,
+                                        ),
+                                        border: UnderlineInputBorder(
+                                          borderSide: BorderSide(
+                                            color: c.accent,
+                                            width: 3,
+                                          ),
+                                        ),
+                                        enabledBorder: UnderlineInputBorder(
+                                          borderSide: BorderSide(
+                                            color: c.accent,
+                                            width: 3,
+                                          ),
+                                        ),
+                                        focusedBorder: UnderlineInputBorder(
+                                          borderSide: BorderSide(
+                                            color: c.strong,
+                                            width: 3,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Padding(
+                                    padding: const EdgeInsets.only(bottom: 8),
+                                    child: DwChoiceWords<VolumeUnit>(
+                                      values: VolumeUnit.values,
+                                      selected: _unit,
+                                      spacing: 12,
+                                      labelOf: (u) =>
+                                          u == VolumeUnit.go ? 'Go' : 'Mo',
+                                      onChanged: _setUnit,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ],
+                        ),
+                      },
+                    ],
                   ),
-                  icon: const Icon(Icons.add_rounded, size: 20),
-                  label: const Text('Ajouter un seuil'),
                 ),
-              ),
-              const SizedBox(height: 4),
-              _AlertsStatus(controller: controller),
-            ],
+                const SizedBox(height: 14),
+                Text.rich(
+                  TextSpan(
+                    children: [
+                      TextSpan(
+                        text: bytes == null
+                            ? '1${nbsp}Go = 1${nbsp}024${nbsp}Mo'
+                            : _unit == VolumeUnit.go
+                            ? '= ${formatThousands((bytes / DataUnits.bytesPerMo).round())}${nbsp}Mo'
+                            : '= ${formatNumber(bytes / DataUnits.bytesPerGo)}${nbsp}Go',
+                      ),
+                      const TextSpan(text: ' · fin du suivi le '),
+                      TextSpan(
+                        text: end == null
+                            ? 'à choisir'
+                            : '${formatDate(end)} à ${formatTime(end)}',
+                        style: TextStyle(color: c.text).weight(600),
+                      ),
+                    ],
+                  ),
+                  style: t.bodySmall!.copyWith(
+                    fontSize: 13,
+                    color: c.textSecondary,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 22),
 
-        DwCard(
+        DwReveal(
+          delay: 1,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Forfait récurrent', style: t.titleMedium),
-                        const SizedBox(height: 2),
-                        Text(
-                          'À l’expiration, DataWatch vous propose de relancer le suivi avec les mêmes réglages.',
-                          style: t.bodyMedium!.copyWith(color: c.textSecondary),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Switch(
-                    value: _recurring,
-                    onChanged: (v) => setState(() => _recurring = v),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: c.surfaceMuted,
-                  borderRadius: BorderRadius.circular(DwRadius.md),
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              DwSectionTitle(
+                'Seuils d’alerte',
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
-                      Icons.info_outline_rounded,
-                      size: 16,
+                      controller.alertsActive
+                          ? Icons.notifications_none
+                          : Icons.notifications_off_outlined,
+                      size: 15,
                       color: c.textSecondary,
                     ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        'DataWatch ne voit pas vos achats de forfait. Après une recharge, démarrez un nouveau suivi.',
-                        style: t.bodySmall!.copyWith(color: c.text),
+                    const SizedBox(width: 5),
+                    Text(
+                      controller.alertsActive
+                          ? 'Notifications activées'
+                          : 'Notifications coupées',
+                      style: t.bodySmall!.copyWith(color: c.textSecondary),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              DwSheet(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _ThresholdRuler(
+                      marks: marks,
+                      enabled: _thresholds,
+                      amountOf: (pct) => bytes == null
+                          ? null
+                          : formatBytes(bytes * pct ~/ 100),
+                      onTap: _toggleThreshold,
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.only(top: 10),
+                      decoration: BoxDecoration(
+                        border: Border(top: BorderSide(color: c.divider)),
                       ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: DwChoiceWords<ThresholdPreset>(
+                              values: ThresholdPreset.values,
+                              selected:
+                                  _thresholds.length ==
+                                          _preset.thresholds.length &&
+                                      _thresholds.containsAll(
+                                        _preset.thresholds,
+                                      )
+                                  ? _preset
+                                  : null,
+                              labelOf: (p) => p.label,
+                              onChanged: (p) => setState(() {
+                                _preset = p;
+                                _thresholds = {...p.thresholds};
+                              }),
+                            ),
+                          ),
+                          TextButton.icon(
+                            onPressed: _addThreshold,
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                              ),
+                              textStyle: t.titleSmall,
+                            ),
+                            icon: const Icon(Icons.add, size: 18),
+                            label: const Text('Seuil'),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    _AlertsStatus(
+                      controller: controller,
+                      nextThreshold: _thresholds.isEmpty
+                          ? null
+                          : (_thresholds.toList()..sort()).first,
+                      bytes: bytes,
                     ),
                   ],
                 ),
@@ -661,82 +676,183 @@ class _PlanScreenState extends State<PlanScreen> {
             ],
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 22),
 
-        FilledButton(
-          onPressed: _save,
-          child: const Text('Enregistrer le forfait'),
-        ),
-        if (hasPlan) ...[
-          const SizedBox(height: 8),
-          Row(
+        DwReveal(
+          delay: 2,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: _restartNow,
-                  child: const Text('Nouveau suivi'),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: TextButton(
-                  onPressed: _reset,
-                  style: TextButton.styleFrom(foregroundColor: c.critical),
-                  child: const Text('Réinitialiser'),
+              const DwSectionTitle('Renouvellement'),
+              const SizedBox(height: 12),
+              DwSheet(
+                padding: const EdgeInsets.fromLTRB(20, 14, 16, 14),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Forfait récurrent', style: t.titleMedium),
+                          const SizedBox(height: 2),
+                          Text(
+                            'À l’expiration, DataWatch propose de relancer le suivi avec les mêmes réglages. Il ne voit pas vos achats : après une recharge, démarrez un nouveau suivi.',
+                            style: t.bodyMedium!.copyWith(
+                              color: c.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Switch(
+                      value: _recurring,
+                      onChanged: (v) => setState(() => _recurring = v),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
-        ],
+        ),
+        const SizedBox(height: 22),
+
+        DwReveal(
+          delay: 3,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              DwPrimaryButton(
+                label: 'Enregistrer le forfait',
+                onPressed: _save,
+              ),
+              if (hasPlan) ...[
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: _restartNow,
+                        child: const Text('Nouveau suivi'),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: TextButton(
+                        onPressed: _reset,
+                        style: TextButton.styleFrom(
+                          foregroundColor: c.critical,
+                        ),
+                        child: const Text('Réinitialiser'),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ],
+          ),
+        ),
       ],
     );
   }
 }
 
-class _Section extends StatelessWidget {
-  const _Section({required this.title, required this.child, this.trailing});
+/// « Je suis chez MTN, j’ai pris 5 Go le 15 oct. à 08:30, valable 7 jours. »
+class _Sentence extends StatelessWidget {
+  const _Sentence({
+    required this.operator,
+    required this.volume,
+    required this.start,
+    required this.validity,
+    required this.active,
+    required this.onOperator,
+    required this.onVolume,
+    required this.onStart,
+    required this.onValidity,
+  });
 
-  final String title;
-  final Widget child;
-  final Widget? trailing;
+  final String operator;
+  final String volume;
+  final String start;
+  final String validity;
+  final _Blank? active;
+  final VoidCallback onOperator;
+  final VoidCallback onVolume;
+  final VoidCallback onStart;
+  final VoidCallback onValidity;
 
   @override
   Widget build(BuildContext context) {
-    final t = Theme.of(context).textTheme;
-    return DwCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+    final style = DwFonts.style(
+      DwFonts.display,
+      26,
+      600,
+      height: 1.45,
+      letterSpacing: -0.5,
+    ).copyWith(color: context.dw.text);
+    WidgetSpan blank(
+      String label,
+      String semantic,
+      bool on,
+      VoidCallback onTap,
+    ) => WidgetSpan(
+      alignment: PlaceholderAlignment.baseline,
+      baseline: TextBaseline.alphabetic,
+      child: _BlankButton(
+        label: label,
+        semanticLabel: semantic,
+        active: on,
+        style: style,
+        onTap: onTap,
+      ),
+    );
+    return Text.rich(
+      TextSpan(
+        style: style,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  title,
-                  style: t.bodyMedium!
-                      .weight(600)
-                      .copyWith(color: context.dw.textSecondary),
-                ),
-              ),
-              ?trailing,
-            ],
+          const TextSpan(text: 'Je suis chez '),
+          blank(
+            operator,
+            'Opérateur : $operator, modifier',
+            active == _Blank.operator,
+            onOperator,
           ),
-          const SizedBox(height: 10),
-          child,
+          const TextSpan(text: ', j’ai pris '),
+          blank(
+            volume,
+            'Volume : $volume, modifier',
+            active == _Blank.volume,
+            onVolume,
+          ),
+          const TextSpan(text: ' le '),
+          blank(start, 'Début : $start, modifier', false, onStart),
+          const TextSpan(text: ', valable '),
+          blank(
+            validity,
+            'Validité : $validity, modifier',
+            active == _Blank.validity,
+            onValidity,
+          ),
+          const TextSpan(text: '.'),
         ],
       ),
     );
   }
 }
 
-class _PresetButton extends StatelessWidget {
-  const _PresetButton({
+class _BlankButton extends StatelessWidget {
+  const _BlankButton({
     required this.label,
-    required this.selected,
+    required this.semanticLabel,
+    required this.active,
+    required this.style,
     required this.onTap,
   });
 
   final String label;
-  final bool selected;
+  final String semanticLabel;
+  final bool active;
+  final TextStyle style;
   final VoidCallback onTap;
 
   @override
@@ -744,159 +860,145 @@ class _PresetButton extends StatelessWidget {
     final c = context.dw;
     return Semantics(
       button: true,
-      selected: selected,
-      child: Material(
-        color: selected ? c.positiveSoft : c.surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(DwRadius.md),
-          side: BorderSide(color: selected ? c.strong : c.divider),
-        ),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(DwRadius.md),
-          child: SizedBox(
-            height: 44,
-            child: Center(
-              child: Text(
-                label,
-                style: Theme.of(
-                  context,
-                ).textTheme.titleSmall!.copyWith(fontSize: 13.5),
+      label: semanticLabel,
+      excludeSemantics: true,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(DwRadius.xs),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(horizontal: 2),
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: BorderSide(
+                color: active ? c.accent : c.accent.withValues(alpha: 0.45),
+                width: 3,
               ),
             ),
           ),
+          child: Text(label, style: style.copyWith(height: 1.1)),
         ),
       ),
     );
   }
 }
 
-class _FieldButton extends StatelessWidget {
-  const _FieldButton({
-    required this.icon,
-    required this.label,
-    required this.value,
+/// La règle des seuils : un point par seuil, coché ou non, posé à son
+/// pourcentage le long d'un trait.
+class _ThresholdRuler extends StatelessWidget {
+  const _ThresholdRuler({
+    required this.marks,
+    required this.enabled,
+    required this.amountOf,
     required this.onTap,
   });
 
-  final IconData icon;
-  final String label;
-  final String value;
+  final List<int> marks;
+  final Set<int> enabled;
+  final String? Function(int) amountOf;
+  final ValueChanged<int> onTap;
+
+  static const _inset = 22.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.dw;
+    final active = marks.where(enabled.contains).toList();
+    final maxOn = active.isEmpty ? 0 : active.last;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final w = constraints.maxWidth;
+        double x(int pct) => _inset + (w - 2 * _inset) * pct / 100;
+        return SizedBox(
+          height: 66,
+          child: Stack(
+            children: [
+              Positioned(
+                left: _inset,
+                right: _inset,
+                top: 21,
+                child: Container(height: 2, color: c.divider),
+              ),
+              Positioned(
+                left: _inset,
+                top: 21,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 400),
+                  curve: Curves.easeOutCubic,
+                  width: x(maxOn) - _inset,
+                  height: 2,
+                  color: c.strong,
+                ),
+              ),
+              for (final pct in marks)
+                Positioned(
+                  left: x(pct) - 22,
+                  top: 0,
+                  width: 44,
+                  height: 66,
+                  child: _Mark(
+                    pct: pct,
+                    on: enabled.contains(pct),
+                    amount: amountOf(pct),
+                    onTap: () => onTap(pct),
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _Mark extends StatelessWidget {
+  const _Mark({
+    required this.pct,
+    required this.on,
+    required this.amount,
+    required this.onTap,
+  });
+
+  final int pct;
+  final bool on;
+  final String? amount;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final c = context.dw;
-    final t = Theme.of(context).textTheme;
-    return Material(
-      color: c.surfaceMuted,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: c.divider),
-      ),
+    return Semantics(
+      toggled: on,
+      button: true,
+      label:
+          'Alerte à $pct %${amount == null ? '' : ', soit $amount consommés'}',
+      excludeSemantics: true,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: SizedBox(
-          height: 60,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14),
-            child: Row(
-              children: [
-                Icon(icon, size: 20, color: c.text),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        label,
-                        style: t.bodySmall!.copyWith(color: c.textSecondary),
-                      ),
-                      Text(value, style: t.titleMedium),
-                    ],
-                  ),
-                ),
-                Icon(Icons.chevron_right_rounded, color: c.textSecondary),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ThresholdRow extends StatelessWidget {
-  const _ThresholdRow({
-    required this.percent,
-    required this.amount,
-    required this.enabled,
-    required this.onChanged,
-    this.onRemove,
-  });
-
-  final int percent;
-  final String? amount;
-  final bool enabled;
-  final ValueChanged<bool> onChanged;
-  final VoidCallback? onRemove;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.dw;
-    final t = Theme.of(context).textTheme;
-    final color = switch (percent) {
-      >= 100 => c.critical,
-      >= 80 => c.warningText,
-      _ => c.text,
-    };
-    return MergeSemantics(
-      child: SizedBox(
-        height: 60,
-        child: Row(
+        borderRadius: BorderRadius.circular(DwRadius.sm),
+        child: Column(
           children: [
-            SizedBox(
-              width: 76,
-              child: Text(
-                '$percent$nbsp%',
-                style: DwFonts.style(
-                  DwFonts.display,
-                  22,
-                  700,
-                  letterSpacing: -0.6,
-                ).copyWith(color: color),
+            const SizedBox(height: 14),
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              width: 16,
+              height: 16,
+              decoration: BoxDecoration(
+                color: on ? c.accent : c.surface,
+                shape: BoxShape.circle,
+                border: Border.all(color: on ? c.strong : c.track, width: 2),
               ),
             ),
-            Expanded(
-              child: amount == null
-                  ? Text(
-                      'du volume déclaré',
-                      style: t.bodyMedium!.copyWith(color: c.textSecondary),
-                    )
-                  : Text.rich(
-                      TextSpan(
-                        children: [
-                          const TextSpan(text: 'à '),
-                          TextSpan(
-                            text: amount,
-                            style: TextStyle(color: c.text).weight(600),
-                          ),
-                          const TextSpan(text: ' consommés'),
-                        ],
-                      ),
-                      style: t.bodyMedium!.copyWith(color: c.textSecondary),
-                    ),
+            const SizedBox(height: 10),
+            Text(
+              '$pct$nbsp%',
+              style: DwFonts.style(
+                DwFonts.body,
+                11.5,
+                600,
+                tabular: true,
+              ).copyWith(color: on ? c.text : c.textSecondary),
             ),
-            if (onRemove == null)
-              Switch(value: enabled, onChanged: onChanged)
-            else
-              IconButton(
-                onPressed: onRemove,
-                tooltip: 'Retirer le seuil de $percent %',
-                icon: Icon(Icons.close_rounded, color: c.textSecondary),
-              ),
           ],
         ),
       ),
@@ -904,10 +1006,18 @@ class _ThresholdRow extends StatelessWidget {
   }
 }
 
-/// Ce qui empêcherait les alertes de s'afficher, avec le moyen d'y remédier.
+/// Ce qui empêcherait les alertes de s'afficher, avec le moyen d'y remédier ;
+/// sinon, le prochain seuil.
 class _AlertsStatus extends StatelessWidget {
-  const _AlertsStatus({required this.controller});
+  const _AlertsStatus({
+    required this.controller,
+    required this.nextThreshold,
+    required this.bytes,
+  });
+
   final AppController controller;
+  final int? nextThreshold;
+  final int? bytes;
 
   @override
   Widget build(BuildContext context) {
@@ -916,8 +1026,12 @@ class _AlertsStatus extends StatelessWidget {
     final settings = controller.settings;
 
     if (controller.alertsActive) {
+      final next = nextThreshold;
       return Text(
-        'Une seule notification par seuil et par forfait, vérifiée environ toutes les 15 minutes.',
+        next == null
+            ? 'Aucun seuil : vous ne serez pas prévenu.'
+            : 'Une seule notification par seuil et par forfait, vérifiée environ toutes les 15 minutes.'
+                  '${bytes == null ? '' : ' Premier seuil : $next$nbsp%, soit ${formatBytes(bytes! * next ~/ 100)} consommés.'}',
         style: t.bodySmall!.copyWith(color: c.textSecondary),
       );
     }
@@ -940,7 +1054,7 @@ class _AlertsStatus extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(14, 6, 6, 6),
       decoration: BoxDecoration(
         color: c.warningSoft,
-        borderRadius: BorderRadius.circular(DwRadius.md),
+        borderRadius: BorderRadius.circular(DwRadius.sm),
       ),
       child: Row(
         children: [

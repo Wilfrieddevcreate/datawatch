@@ -4,7 +4,7 @@ import '../../app/app_controller.dart';
 import '../../app/app_scope.dart';
 import '../theme/tokens.dart';
 import '../widgets/page_header.dart';
-import '../widgets/usage_row.dart';
+import '../widgets/primitives.dart';
 
 /// Lien affiché sous le texte d'une page d'information.
 typedef InfoLink = ({IconData icon, String label, String url});
@@ -104,12 +104,12 @@ class InfoScreen extends StatelessWidget {
       ],
       links: [
         (
-          icon: Icons.mail_outline_rounded,
+          icon: Icons.mail_outline,
           label: 'Écrire à $publisherEmail',
           url: 'mailto:$publisherEmail?subject=DataWatch',
         ),
         (
-          icon: Icons.public_rounded,
+          icon: Icons.public,
           label: 'Visiter $publisherSite',
           url: 'https://$publisherSite',
         ),
@@ -129,7 +129,7 @@ class InfoScreen extends StatelessWidget {
         overline: overline,
         subtitle: Text(intro),
         children: [
-          DwCard(
+          DwSheet(
             padding: const EdgeInsets.fromLTRB(20, 4, 20, 4),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,

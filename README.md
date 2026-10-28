@@ -103,7 +103,7 @@ lib/
   domain/      forfait, restant, rythme, conseils généraux et par application
   data/        canaux natifs, stockage local du forfait et des paramètres
   app/         contrôleur d'état, période précédente, synchronisation des alertes
-  ui/          thème « Réservoir », en-têtes, composants et écrans
+  ui/          thème « Réservoir, en grand » : cuve à ligne d'eau, onglets texte, écrans
 ```
 
 ## Choix validés
@@ -142,5 +142,7 @@ confidentialité est dans l'application (Paramètres) et en page web :
 
 ## Polices
 
-Bricolage Grotesque, Geist et Geist Mono sont embarquées (licence SIL OFL 1.1,
-voir `assets/fonts/`). Elles ne sont jamais téléchargées au lancement.
+Bricolage Grotesque (chiffres en vedette et titres) et Geist (texte) sont
+embarquées (licence SIL OFL 1.1, voir `assets/fonts/`). Elles ne sont jamais
+téléchargées au lancement. Geist Mono reste dans le dossier pour les visuels
+de la fiche et la vidéo, mais n'est plus livrée dans l'application.

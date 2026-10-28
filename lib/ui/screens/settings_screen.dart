@@ -6,8 +6,8 @@ import '../../core/format.dart';
 import '../theme/tokens.dart';
 import '../theme/typography.dart';
 import '../widgets/page_header.dart';
-import '../widgets/segmented.dart';
-import '../widgets/usage_row.dart';
+import '../widgets/primitives.dart';
+import '../widgets/text_tabs.dart';
 import 'info_screen.dart';
 
 /// Paramètres (cahier des charges, section 5.7).
@@ -76,174 +76,177 @@ class SettingsScreen extends StatelessWidget {
       body: DwPage(
         leading: const DwBackButton(),
         title: 'Paramètres',
-        overline: 'DataWatch',
         subtitle: const Text(
           'Autorisations, alertes et données de l’application.',
         ),
         children: [
-          _PrivacyCard(
-            onOpen: () => Navigator.of(context).push(InfoScreen.privacy()),
+          DwReveal(
+            child: _PrivacySheet(
+              onOpen: () => Navigator.of(context).push(InfoScreen.privacy()),
+            ),
           ),
-          const SizedBox(height: 24),
-          _Group(
-            title: 'Autorisations',
-            children: [
-              _SettingRow(
-                icon: Icons.signal_cellular_alt_rounded,
-                title: 'Accès aux données d’utilisation',
-                subtitle: 'Indispensable pour mesurer la consommation.',
-                badge: const _StatusPill(ok: true, label: 'Accordé'),
-                onTap: controller.openUsageSettings,
-              ),
-              _SettingRow(
-                icon: Icons.notifications_none_rounded,
-                title: 'Alertes de consommation',
-                subtitle: !settings.notificationsEnabled
-                    ? 'Désactivées : aucun seuil ne sera signalé.'
-                    : device.notificationsAllowed
-                    ? 'Une notification par seuil atteint.'
-                    : 'Android bloque les notifications de DataWatch.',
-                trailing: Switch(
-                  value: settings.notificationsEnabled,
-                  onChanged: controller.setNotificationsEnabled,
+          const SizedBox(height: 22),
+          DwReveal(
+            delay: 1,
+            child: _Group(
+              title: 'Autorisations',
+              children: [
+                _SettingRow(
+                  title: 'Accès aux données d’utilisation',
+                  subtitle: 'Indispensable pour mesurer la consommation.',
+                  badge: DwTag(
+                    'Accordé',
+                    color: c.positiveText,
+                    icon: Icons.check,
+                  ),
+                  onTap: controller.openUsageSettings,
                 ),
-                onTap: () => controller.setNotificationsEnabled(
-                  !settings.notificationsEnabled,
+                _SettingRow(
+                  title: 'Alertes de consommation',
+                  subtitle: !settings.notificationsEnabled
+                      ? 'Désactivées : aucun seuil ne sera signalé.'
+                      : device.notificationsAllowed
+                      ? 'Une notification par seuil atteint.'
+                      : 'Android bloque les notifications de DataWatch.',
+                  trailing: Switch(
+                    value: settings.notificationsEnabled,
+                    onChanged: controller.setNotificationsEnabled,
+                  ),
+                  onTap: () => controller.setNotificationsEnabled(
+                    !settings.notificationsEnabled,
+                  ),
                 ),
-              ),
-              if (settings.notificationsEnabled && !device.notificationsAllowed)
-                _ActionNotice(
-                  text:
-                      'Autorisez les notifications pour recevoir les alertes.',
-                  action: 'Autoriser',
-                  onPressed: allowNotifications,
+                if (settings.notificationsEnabled &&
+                    !device.notificationsAllowed)
+                  _ActionNotice(
+                    text:
+                        'Autorisez les notifications pour recevoir les alertes.',
+                    action: 'Autoriser',
+                    onPressed: allowNotifications,
+                  ),
+                _SettingRow(
+                  title: 'Alertes en arrière-plan',
+                  subtitle: device.backgroundUnrestricted
+                      ? 'Android laisse DataWatch vérifier vos seuils à l’heure.'
+                      : 'L’économie d’énergie peut retarder les alertes. Choisissez « Aucune restriction » pour DataWatch.',
+                  badge: DwTag(
+                    device.backgroundUnrestricted ? 'Fiables' : 'Limitées',
+                    color: device.backgroundUnrestricted
+                        ? c.positiveText
+                        : c.warningText,
+                    icon: device.backgroundUnrestricted
+                        ? Icons.check
+                        : Icons.error_outline,
+                  ),
+                  onTap: controller.openBatterySettings,
                 ),
-              _SettingRow(
-                icon: Icons.bolt_rounded,
-                title: 'Alertes en arrière-plan',
-                subtitle: device.backgroundUnrestricted
-                    ? 'Android laisse DataWatch vérifier vos seuils à l’heure.'
-                    : 'L’économie d’énergie peut retarder les alertes. Choisissez « Aucune restriction » pour DataWatch.',
-                badge: _StatusPill(
-                  ok: device.backgroundUnrestricted,
-                  label: device.backgroundUnrestricted ? 'Fiables' : 'Limitées',
-                ),
-                onTap: controller.openBatterySettings,
-              ),
-            ],
+              ],
+            ),
           ),
-          const SizedBox(height: 20),
-          _Group(
-            title: 'Forfait',
-            children: [
-              _SettingRow(
-                icon: Icons.sim_card_outlined,
-                title: 'Modifier le forfait',
-                subtitle: plan == null
-                    ? 'Aucun forfait déclaré'
-                    : '${plan.operator.label} · ${formatBytes(plan.volumeBytes)} · jusqu’au ${formatDayMonthTime(plan.end)}',
-                trailing: const _Chevron(),
-                onTap: openPlan,
-              ),
-              _SettingRow(
-                icon: Icons.tune_rounded,
-                title: 'Seuils d’alerte',
-                subtitle: thresholds.isEmpty
-                    ? 'Aucun seuil actif'
-                    : thresholds.map((p) => '$p$nbsp%').join(' · '),
-                trailing: const _Chevron(),
-                onTap: openPlan,
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          _Group(
-            title: 'Affichage',
-            children: [
-              _SettingRow(
-                icon: Icons.straighten_rounded,
-                title: 'Unités',
-                subtitle: switch (settings.units) {
-                  UnitMode.auto => 'Mo sous 1 Go, Go au-delà',
-                  UnitMode.mo => 'Toujours en mégaoctets',
-                  UnitMode.go => 'Toujours en gigaoctets',
-                },
-                below: DwSegmented<UnitMode>(
-                  values: UnitMode.values,
-                  selected: settings.units,
-                  expand: true,
-                  height: 34,
-                  trackColor: c.background,
-                  labelOf: (u) => u.label,
-                  onChanged: controller.setUnits,
+          const SizedBox(height: 22),
+          DwReveal(
+            delay: 2,
+            child: _Group(
+              title: 'Forfait',
+              children: [
+                _SettingRow(
+                  title: 'Modifier le forfait',
+                  subtitle: plan == null
+                      ? 'Aucun forfait déclaré'
+                      : '${plan.operator.label} · ${formatBytes(plan.volumeBytes)} · jusqu’au ${formatDayMonthTime(plan.end)}',
+                  trailing: const _Chevron(),
+                  onTap: openPlan,
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          _Group(
-            title: 'Informations',
-            children: [
-              _SettingRow(
-                icon: Icons.info_outline_rounded,
-                title: 'Comment la mesure fonctionne',
-                subtitle:
-                    'Pourquoi l’estimation peut différer du solde officiel',
-                trailing: const _Chevron(),
-                onTap: () =>
-                    Navigator.of(context).push(InfoScreen.measurement()),
-              ),
-              _SettingRow(
-                icon: Icons.description_outlined,
-                title: 'Politique de confidentialité',
-                trailing: const _Chevron(),
-                onTap: () => Navigator.of(context).push(InfoScreen.privacy()),
-              ),
-              _SettingRow(
-                icon: Icons.mail_outline_rounded,
-                title: 'Nous écrire',
-                subtitle: publisherEmail,
-                trailing: const _Chevron(),
-                onTap: () => controller.openUrl(
-                  'mailto:$publisherEmail?subject=DataWatch',
+                _SettingRow(
+                  title: 'Seuils d’alerte',
+                  subtitle: thresholds.isEmpty
+                      ? 'Aucun seuil actif'
+                      : thresholds.map((p) => '$p$nbsp%').join(' · '),
+                  trailing: const _Chevron(),
+                  onTap: openPlan,
                 ),
-              ),
-              _SettingRow(
-                icon: Icons.public_rounded,
-                title: 'Site web',
-                subtitle: publisherSite,
-                trailing: const _Chevron(),
-                onTap: () => controller.openUrl('https://$publisherSite'),
-              ),
-            ],
+              ],
+            ),
           ),
-          const SizedBox(height: 20),
-          _Group(
-            title: 'Données',
-            children: [
-              _SettingRow(
-                icon: Icons.delete_outline_rounded,
-                title: 'Effacer les données locales',
-                subtitle:
-                    'Forfait, seuils, préférences et historique des alertes',
-                destructive: true,
-                onTap: eraseAll,
-              ),
-            ],
+          const SizedBox(height: 22),
+          DwReveal(
+            delay: 3,
+            child: _Group(
+              title: 'Affichage',
+              children: [
+                _SettingRow(
+                  title: 'Unités',
+                  subtitle: switch (settings.units) {
+                    UnitMode.auto => 'Mo sous 1 Go, Go au-delà',
+                    UnitMode.mo => 'Toujours en mégaoctets',
+                    UnitMode.go => 'Toujours en gigaoctets',
+                  },
+                  trailing: DwChoiceWords<UnitMode>(
+                    values: UnitMode.values,
+                    selected: settings.units,
+                    spacing: 14,
+                    labelOf: (u) => u.label,
+                    onChanged: controller.setUnits,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 22),
+          DwReveal(
+            delay: 4,
+            child: _Group(
+              title: 'Informations',
+              children: [
+                _SettingRow(
+                  title: 'Comment la mesure fonctionne',
+                  subtitle:
+                      'Pourquoi l’estimation peut différer du solde officiel',
+                  trailing: const _Chevron(),
+                  onTap: () =>
+                      Navigator.of(context).push(InfoScreen.measurement()),
+                ),
+                _SettingRow(
+                  title: 'Politique de confidentialité',
+                  trailing: const _Chevron(),
+                  onTap: () => Navigator.of(context).push(InfoScreen.privacy()),
+                ),
+                _SettingRow(
+                  title: 'Nous écrire',
+                  subtitle: publisherEmail,
+                  trailing: const _Chevron(),
+                  onTap: () => controller.openUrl(
+                    'mailto:$publisherEmail?subject=DataWatch',
+                  ),
+                ),
+                _SettingRow(
+                  title: 'Site web',
+                  subtitle: publisherSite,
+                  trailing: const _Chevron(),
+                  onTap: () => controller.openUrl('https://$publisherSite'),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 22),
+          DwReveal(
+            delay: 5,
+            child: _Group(
+              title: 'Données',
+              children: [
+                _SettingRow(
+                  title: 'Effacer les données locales',
+                  subtitle:
+                      'Forfait, seuils, préférences et historique des alertes',
+                  destructive: true,
+                  onTap: eraseAll,
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 24),
           Text(
-            'DataWatch${device.appVersion == null ? '' : ' · version ${device.appVersion}'}',
-            textAlign: TextAlign.center,
-            style: DwFonts.style(
-              DwFonts.mono,
-              12,
-              400,
-            ).copyWith(color: c.textSecondary),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Données traitées uniquement sur ce téléphone',
+            'DataWatch${device.appVersion == null ? '' : ' · version ${device.appVersion}'} · données traitées uniquement sur ce téléphone',
             textAlign: TextAlign.center,
             style: t.bodySmall!.copyWith(color: c.textSecondary),
           ),
@@ -253,8 +256,8 @@ class SettingsScreen extends StatelessWidget {
   }
 }
 
-class _PrivacyCard extends StatelessWidget {
-  const _PrivacyCard({required this.onOpen});
+class _PrivacySheet extends StatelessWidget {
+  const _PrivacySheet({required this.onOpen});
   final VoidCallback onOpen;
 
   @override
@@ -264,28 +267,23 @@ class _PrivacyCard extends StatelessWidget {
     return Material(
       color: c.hero,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(DwRadius.xl),
+        borderRadius: BorderRadius.circular(DwRadius.lg),
         side: BorderSide(color: c.heroBorder),
       ),
       child: InkWell(
         onTap: onOpen,
-        borderRadius: BorderRadius.circular(DwRadius.xl),
+        borderRadius: BorderRadius.circular(DwRadius.lg),
         child: Padding(
           padding: const EdgeInsets.all(20),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: const BoxDecoration(
-                  color: DwColors.tankOk,
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
+              Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: Icon(
                   Icons.verified_user_outlined,
-                  size: 22,
-                  color: Color(0xFF0F1218),
+                  size: 26,
+                  color: c.accent,
                 ),
               ),
               const SizedBox(width: 14),
@@ -295,12 +293,7 @@ class _PrivacyCard extends StatelessWidget {
                   children: [
                     Text(
                       'Vos données restent ici.',
-                      style: DwFonts.style(
-                        DwFonts.display,
-                        20,
-                        650,
-                        letterSpacing: -0.4,
-                      ).copyWith(color: c.heroText),
+                      style: DwFonts.section(22).copyWith(color: c.heroText),
                     ),
                     const SizedBox(height: 4),
                     Text(
@@ -331,14 +324,10 @@ class _Group extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4),
-          child: Semantics(header: true, child: DwOverline(title)),
-        ),
-        const SizedBox(height: 8),
-        DwCard(
+        DwSectionTitle(title, size: 20),
+        const SizedBox(height: 10),
+        DwSheet(
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          radius: DwRadius.lg,
           child: Column(
             children: [
               for (final (i, child) in children.indexed)
@@ -360,25 +349,19 @@ class _Group extends StatelessWidget {
 
 class _SettingRow extends StatelessWidget {
   const _SettingRow({
-    required this.icon,
     required this.title,
     this.subtitle,
     this.badge,
-    this.below,
     this.trailing,
     this.onTap,
     this.destructive = false,
   });
 
-  final IconData icon;
   final String title;
   final String? subtitle;
 
   /// État affiché sur la ligne du titre (« Accordé », « Limitées »).
   final Widget? badge;
-
-  /// Contrôle large placé sous le texte (sélecteur d'unités).
-  final Widget? below;
   final Widget? trailing;
   final VoidCallback? onTap;
   final bool destructive;
@@ -391,17 +374,12 @@ class _SettingRow extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       child: ConstrainedBox(
-        constraints: const BoxConstraints(minHeight: 64),
+        constraints: const BoxConstraints(minHeight: 62),
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 12),
           child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Padding(
-                padding: const EdgeInsets.only(top: 1),
-                child: Icon(icon, size: 21, color: color),
-              ),
-              const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -430,13 +408,12 @@ class _SettingRow extends StatelessWidget {
                         style: t.bodyMedium!.copyWith(color: c.textSecondary),
                       ),
                     ],
-                    if (below != null) ...[const SizedBox(height: 10), below!],
                   ],
                 ),
               ),
               if (trailing != null) ...[
                 const SizedBox(width: 12),
-                Align(heightFactor: 1, child: trailing!),
+                trailing!,
               ],
             ],
           ),
@@ -467,11 +444,11 @@ class _ActionNotice extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(14, 8, 8, 8),
         decoration: BoxDecoration(
           color: c.warningSoft,
-          borderRadius: BorderRadius.circular(DwRadius.md),
+          borderRadius: BorderRadius.circular(DwRadius.sm),
         ),
         child: Row(
           children: [
-            Icon(Icons.warning_amber_rounded, size: 18, color: c.warningText),
+            Icon(Icons.warning_amber, size: 18, color: c.warningText),
             const SizedBox(width: 10),
             Expanded(
               child: Text(text, style: t.bodyMedium!.copyWith(color: c.text)),
@@ -488,45 +465,10 @@ class _ActionNotice extends StatelessWidget {
   }
 }
 
-class _StatusPill extends StatelessWidget {
-  const _StatusPill({required this.ok, required this.label});
-
-  final bool ok;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.dw;
-    final fg = ok ? c.positiveText : c.warningText;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: ok ? c.positiveSoft : c.warningSoft,
-        borderRadius: BorderRadius.circular(DwRadius.pill),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            ok ? Icons.check_rounded : Icons.error_outline_rounded,
-            size: 14,
-            color: fg,
-          ),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: DwFonts.style(DwFonts.body, 12.5, 600).copyWith(color: fg),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _Chevron extends StatelessWidget {
   const _Chevron();
 
   @override
   Widget build(BuildContext context) =>
-      Icon(Icons.chevron_right_rounded, color: context.dw.textSecondary);
+      Icon(Icons.chevron_right, color: context.dw.textSecondary);
 }

@@ -3,11 +3,12 @@ import 'package:flutter/material.dart';
 import '../../app/app_scope.dart';
 import '../../domain/data_plan.dart';
 import '../theme/tokens.dart';
+import '../theme/typography.dart';
 import '../widgets/page_header.dart';
 import 'apps_screen.dart';
-import 'settings_screen.dart';
 import 'dashboard_screen.dart';
 import 'plan_screen.dart';
+import 'settings_screen.dart';
 import 'tips_screen.dart';
 
 /// Les quatre onglets de la barre de navigation.
@@ -31,63 +32,190 @@ class _HomeShellState extends State<HomeShell> {
   Widget build(BuildContext context) {
     final c = context.dw;
     final level = AppScope.of(context).planUsage?.level;
-    final alerts = DwHeaderButton(
-      icon: Icons.notifications_none_rounded,
-      tooltip: 'Seuils d’alerte',
-      onPressed: () => _goTo(_plan),
-      badgeColor: switch (level) {
-        UsageLevel.exhausted => c.critical,
-        UsageLevel.warning => c.warning,
-        _ => null,
-      },
-    );
-    final settings = DwHeaderButton(
-      icon: Icons.settings_outlined,
-      tooltip: 'Paramètres',
-      onPressed: () => Navigator.of(
-        context,
-      ).push(SettingsScreen.route(onOpenPlan: () => _goTo(_plan))),
-    );
-    final actions = [alerts, settings];
+    final badge = switch (level) {
+      UsageLevel.exhausted => c.critical,
+      UsageLevel.warning => c.warning,
+      _ => null,
+    };
+    List<Widget> actions({Color? color, Color? badgeBorder}) => [
+      DwHeaderButton(
+        icon: Icons.notifications_none,
+        tooltip: 'Seuils d’alerte',
+        onPressed: () => _goTo(_plan),
+        badgeColor: badge,
+        color: color,
+        badgeBorder: badgeBorder,
+      ),
+      DwHeaderButton(
+        icon: Icons.settings_outlined,
+        tooltip: 'Paramètres',
+        onPressed: () => Navigator.of(
+          context,
+        ).push(SettingsScreen.route(onOpenPlan: () => _goTo(_plan))),
+        color: color,
+        badgeBorder: badgeBorder,
+      ),
+    ];
+    final tabActions = actions();
 
     return Scaffold(
       body: IndexedStack(
         index: _index,
         children: [
           DashboardScreen(
-            actions: actions,
+            actions: actions(color: c.heroText, badgeBorder: c.hero),
             onOpenPlan: () => _goTo(_plan),
             onOpenApps: () => _goTo(_apps),
           ),
-          AppsScreen(actions: actions),
-          PlanScreen(actions: actions, onSaved: () => _goTo(_dashboard)),
-          TipsScreen(actions: actions),
+          AppsScreen(actions: tabActions),
+          PlanScreen(actions: tabActions, onSaved: () => _goTo(_dashboard)),
+          TipsScreen(actions: tabActions),
         ],
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _index,
-        onDestinationSelected: _goTo,
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home_rounded),
-            label: 'Accueil',
+      bottomNavigationBar: _TabBar(index: _index, onChanged: _goTo),
+    );
+  }
+}
+
+/// Barre d'onglets plate : un filet au-dessus, l'onglet courant souligné
+/// d'un trait lime sous son icône.
+class _TabBar extends StatelessWidget {
+  const _TabBar({required this.index, required this.onChanged});
+
+  final int index;
+  final ValueChanged<int> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.dw;
+    return Container(
+      decoration: BoxDecoration(
+        color: c.surface,
+        border: Border(top: BorderSide(color: c.divider)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: SizedBox(
+          height: 68,
+          child: Row(
+            children: [
+              _Tab(
+                label: 'Accueil',
+                selected: index == 0,
+                onTap: () => onChanged(0),
+                icon: const _TankIcon(),
+              ),
+              _Tab(
+                label: 'Applis',
+                selected: index == 1,
+                onTap: () => onChanged(1),
+                icon: const Icon(Icons.grid_view_rounded, size: 22),
+              ),
+              _Tab(
+                label: 'Forfait',
+                selected: index == 2,
+                onTap: () => onChanged(2),
+                icon: const Icon(Icons.sim_card_outlined, size: 22),
+              ),
+              _Tab(
+                label: 'Conseils',
+                selected: index == 3,
+                onTap: () => onChanged(3),
+                icon: const Icon(Icons.lightbulb_outline, size: 22),
+              ),
+            ],
           ),
-          NavigationDestination(
-            icon: Icon(Icons.grid_view_rounded),
-            label: 'Applis',
+        ),
+      ),
+    );
+  }
+}
+
+class _Tab extends StatelessWidget {
+  const _Tab({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+    required this.icon,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  final Widget icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.dw;
+    final color = selected ? c.text : c.textSecondary;
+    return Expanded(
+      child: Semantics(
+        button: true,
+        selected: selected,
+        label: label,
+        excludeSemantics: true,
+        child: InkWell(
+          onTap: onTap,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                width: 40,
+                height: 30,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  border: Border(
+                    bottom: BorderSide(
+                      color: selected ? c.accent : Colors.transparent,
+                      width: 3,
+                    ),
+                  ),
+                ),
+                child: IconTheme(
+                  data: IconThemeData(color: color, size: 22),
+                  child: icon,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                label,
+                style: DwFonts.style(
+                  DwFonts.body,
+                  12,
+                  selected ? 600 : 500,
+                ).copyWith(color: color),
+              ),
+            ],
           ),
-          NavigationDestination(
-            icon: Icon(Icons.sim_card_outlined),
-            selectedIcon: Icon(Icons.sim_card_rounded),
-            label: 'Forfait',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.lightbulb_outline_rounded),
-            selectedIcon: Icon(Icons.lightbulb_rounded),
-            label: 'Conseils',
-          ),
-        ],
+        ),
+      ),
+    );
+  }
+}
+
+/// L'icône de l'accueil : le réservoir, dans la couleur de l'onglet.
+class _TankIcon extends StatelessWidget {
+  const _TankIcon();
+
+  @override
+  Widget build(BuildContext context) {
+    final color = IconTheme.of(context).color ?? context.dw.text;
+    return Container(
+      width: 13,
+      height: 20,
+      padding: const EdgeInsets.all(2.5),
+      alignment: Alignment.bottomCenter,
+      decoration: BoxDecoration(
+        border: Border.all(color: color, width: 1.9),
+        borderRadius: BorderRadius.circular(5),
+      ),
+      child: Container(
+        height: 6,
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(1.5),
+        ),
       ),
     );
   }

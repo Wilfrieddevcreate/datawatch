@@ -6,9 +6,10 @@ import '../../core/format.dart';
 import '../../data/usage_source.dart';
 import '../theme/tokens.dart';
 import '../theme/typography.dart';
+import 'primitives.dart';
 
-/// Icône d'application lue sur le téléphone, ou pictogramme pour les
-/// regroupements Android (système, partage de connexion…).
+/// Icône d'application lue sur le téléphone, ou vignette portant l'initiale
+/// (application sans icône) ou un pictogramme (regroupements Android).
 class UsageOwnerIcon extends StatefulWidget {
   const UsageOwnerIcon({
     super.key,
@@ -62,21 +63,35 @@ class _UsageOwnerIconState extends State<UsageOwnerIcon> {
   @override
   Widget build(BuildContext context) {
     final c = context.dw;
-    final radius = BorderRadius.circular(widget.size * 0.32);
+    final size = widget.size;
+    final owner = widget.usage.owner;
+    final radius = BorderRadius.circular(size * 0.26);
+    final name = widget.usage.displayName.trim();
     final fallback = Container(
-      width: widget.size,
-      height: widget.size,
+      width: size,
+      height: size,
+      alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: widget.usage.owner == UsageOwner.tethering ? c.strong : c.track,
+        color: owner == UsageOwner.tethering ? c.strong : c.track,
         borderRadius: radius,
       ),
-      child: Icon(
-        _glyph(widget.usage.owner),
-        size: widget.size * 0.5,
-        color: widget.usage.owner == UsageOwner.tethering
-            ? c.accent
-            : c.textSecondary,
-      ),
+      child: owner == UsageOwner.app && name.isNotEmpty
+          ? Text(
+              name.substring(0, 1).toUpperCase(),
+              style: DwFonts.style(
+                DwFonts.display,
+                size * 0.42,
+                700,
+                height: 1,
+              ).copyWith(color: c.text),
+            )
+          : Icon(
+              _glyph(owner),
+              size: size * 0.5,
+              color: owner == UsageOwner.tethering
+                  ? c.accent
+                  : c.textSecondary,
+            ),
     );
     if (_icon == null) return ExcludeSemantics(child: fallback);
     return ExcludeSemantics(
@@ -89,8 +104,8 @@ class _UsageOwnerIconState extends State<UsageOwnerIcon> {
             borderRadius: radius,
             child: Image.memory(
               bytes,
-              width: widget.size,
-              height: widget.size,
+              width: size,
+              height: size,
               gaplessPlayback: true,
             ),
           );
@@ -100,10 +115,10 @@ class _UsageOwnerIconState extends State<UsageOwnerIcon> {
   }
 
   static IconData _glyph(UsageOwner owner) => switch (owner) {
-    UsageOwner.app => Icons.android_rounded,
-    UsageOwner.system => Icons.memory_rounded,
+    UsageOwner.app => Icons.apps,
+    UsageOwner.system => Icons.memory,
     UsageOwner.removed => Icons.inventory_2_outlined,
-    UsageOwner.tethering => Icons.wifi_tethering_rounded,
+    UsageOwner.tethering => Icons.wifi_tethering,
     UsageOwner.hidden => Icons.extension_outlined,
   };
 }
@@ -118,7 +133,7 @@ class UsageRow extends StatelessWidget {
     required this.barFraction,
     this.barColor,
     this.iconSize = 40,
-    this.height = 64,
+    this.height = 66,
     this.showDivider = true,
     this.variation,
     this.secondaryLabel,
@@ -180,29 +195,12 @@ class UsageRow extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: t.bodyLarge!.weight(500),
                     ),
-                    const SizedBox(height: 7),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(3),
-                      child: Stack(
-                        children: [
-                          Container(height: 6, color: c.divider),
-                          FractionallySizedBox(
-                            widthFactor: barFraction.clamp(0.02, 1.0),
-                            child: Container(
-                              height: 6,
-                              decoration: BoxDecoration(
-                                color: barColor ?? c.strong,
-                                borderRadius: BorderRadius.circular(3),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                    const SizedBox(height: 8),
+                    DwBar(fraction: barFraction, color: barColor),
                   ],
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 14),
               ConstrainedBox(
                 constraints: const BoxConstraints(minWidth: 68),
                 child: Column(
@@ -211,13 +209,16 @@ class UsageRow extends StatelessWidget {
                   children: [
                     Text(
                       formatBytes(usage.bytes),
-                      style: t.bodyLarge!
-                          .weight(600)
-                          .copyWith(
-                            fontFeatures: const [FontFeature.tabularFigures()],
-                          ),
+                      style: DwFonts.style(
+                        DwFonts.display,
+                        19,
+                        700,
+                        height: 1,
+                        letterSpacing: -0.4,
+                        tabular: true,
+                      ),
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 3),
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -226,8 +227,8 @@ class UsageRow extends StatelessWidget {
                           style: t.bodySmall!.copyWith(color: c.textSecondary),
                         ),
                         if (v != null) ...[
-                          const SizedBox(width: 6),
-                          VariationChip(variation: v),
+                          const SizedBox(width: 8),
+                          DwVariation(variation: v),
                         ],
                       ],
                     ),
@@ -242,79 +243,37 @@ class UsageRow extends StatelessWidget {
   }
 }
 
-/// Carte blanche arrondie de la maquette.
-class DwCard extends StatelessWidget {
-  const DwCard({
+/// « ↑ 18 % » en orange (hausse) ou « ↓ 12 % » en vert (baisse), sans fond :
+/// la flèche porte le sens, la couleur n'est jamais seule.
+class DwVariation extends StatelessWidget {
+  const DwVariation({
     super.key,
-    required this.child,
-    this.padding = const EdgeInsets.all(16),
-    this.color,
-    this.radius = 24,
+    required this.variation,
+    this.large = false,
+    this.onDark = false,
   });
-
-  final Widget child;
-  final EdgeInsetsGeometry padding;
-  final Color? color;
-  final double radius;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: padding,
-      decoration: BoxDecoration(
-        color: color ?? context.dw.surface,
-        borderRadius: BorderRadius.circular(radius),
-      ),
-      child: child,
-    );
-  }
-}
-
-/// Petit libellé en capitales, au-dessus d'un groupe.
-class DwOverline extends StatelessWidget {
-  const DwOverline(this.text, {super.key, this.color});
-  final String text;
-  final Color? color;
-
-  @override
-  Widget build(BuildContext context) => Text(
-    text.toUpperCase(),
-    style: DwFonts.overline(color ?? context.dw.textSecondary),
-  );
-}
-
-/// « ↑ 18 % » sur fond orange (hausse) ou « ↓ 12 % » sur fond vert (baisse).
-/// La flèche porte le sens : la couleur n'est jamais seule.
-class VariationChip extends StatelessWidget {
-  const VariationChip({super.key, required this.variation, this.large = false});
 
   final double variation;
   final bool large;
+
+  /// Sur la carte sombre : teintes claires.
+  final bool onDark;
 
   @override
   Widget build(BuildContext context) {
     final c = context.dw;
     final up = variation > 0;
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: large ? 10 : 6,
-        vertical: large ? 4 : 2,
-      ),
-      decoration: BoxDecoration(
-        color: up ? c.warningSoft : c.positiveSoft,
-        borderRadius: BorderRadius.circular(
-          large ? DwRadius.pill : DwRadius.xs,
-        ),
-      ),
-      child: Text(
-        formatVariation(variation),
-        style: DwFonts.style(
-          DwFonts.body,
-          large ? 12.5 : 11.5,
-          600,
-          tabular: true,
-        ).copyWith(color: up ? c.warningText : c.positiveText),
-      ),
+    final color = onDark
+        ? (up ? const Color(0xFFFFB27A) : DwColors.tankOk)
+        : (up ? c.warningText : c.positiveText);
+    return Text(
+      formatVariation(variation),
+      style: DwFonts.style(
+        DwFonts.body,
+        large ? 13 : 12.5,
+        600,
+        tabular: true,
+      ).copyWith(color: color),
     );
   }
 }

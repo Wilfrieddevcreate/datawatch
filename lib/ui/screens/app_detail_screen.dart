@@ -11,6 +11,7 @@ import '../period_text.dart';
 import '../theme/tokens.dart';
 import '../theme/typography.dart';
 import '../widgets/page_header.dart';
+import '../widgets/primitives.dart';
 import '../widgets/usage_row.dart';
 
 /// Détail d'une application (cahier des charges, section 5.3).
@@ -99,50 +100,57 @@ class _AppDetailScreenState extends State<AppDetailScreen> {
         titleLeading: UsageOwnerIcon(
           usage: app,
           source: controller.source,
-          size: 52,
+          size: 56,
         ),
         title: name,
-        overline: 'Période · ${controller.effectivePeriod.label}',
         subtitle: snapshot == null
             ? null
             : Text(periodCaption(snapshot.period, snapshot.range)),
         children: [
-          _Hero(
-            mobileBytes: mobileBytes,
-            wifiBytes: wifi?.bytes ?? 0,
-            share: share,
-            isTop: isTop,
-            change: change,
-            screenTime: screenTime,
-          ),
-          const SizedBox(height: 12),
-          if (perHour != null) ...[
-            _HourCost(
+          DwReveal(
+            child: _Hero(
+              mobileBytes: mobileBytes,
+              wifiBytes: wifi?.bytes ?? 0,
+              share: share,
+              isTop: isTop,
+              change: change,
+              screenTime: screenTime,
               name: name,
               perHour: perHour,
               planVolume: plan?.volumeBytes,
             ),
-            const SizedBox(height: 12),
-          ],
+          ),
+          const SizedBox(height: 16),
           if (app.uid != null) ...[
-            FutureBuilder<List<int>>(
-              future: _week,
-              builder: (context, snap) => _WeekChart(
-                days: _days,
-                values: snap.hasData ? snap.data : null,
-                failed: snap.hasError,
+            DwReveal(
+              delay: 1,
+              child: FutureBuilder<List<int>>(
+                future: _week,
+                builder: (context, snap) => _WeekChart(
+                  days: _days,
+                  values: snap.hasData ? snap.data : null,
+                  failed: snap.hasError,
+                ),
               ),
             ),
-            const SizedBox(height: 28),
+            const SizedBox(height: 24),
           ],
-          Text('Conseils pour $name', style: t.titleLarge),
-          const SizedBox(height: 12),
-          DwCard(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+          DwReveal(
+            delay: 2,
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                for (final (i, a) in advice.indexed)
-                  _AdviceRow(advice: a, divider: i > 0),
+                DwSectionTitle('Conseils pour $name'),
+                const SizedBox(height: 12),
+                DwSheet(
+                  padding: const EdgeInsets.fromLTRB(16, 2, 16, 2),
+                  child: Column(
+                    children: [
+                      for (final (i, a) in advice.indexed)
+                        _AdviceRow(advice: a, divider: i > 0),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
@@ -151,7 +159,7 @@ class _AppDetailScreenState extends State<AppDetailScreen> {
             OutlinedButton.icon(
               onPressed: () => controller.openAppSettings(app.packageName!),
               iconAlignment: IconAlignment.end,
-              icon: const Icon(Icons.open_in_new_rounded, size: 18),
+              icon: const Icon(Icons.open_in_new, size: 18),
               label: Text(
                 'Ouvrir les réglages Android de $name',
                 maxLines: 1,
@@ -181,6 +189,9 @@ class _Hero extends StatelessWidget {
     required this.isTop,
     required this.change,
     required this.screenTime,
+    required this.name,
+    required this.perHour,
+    required this.planVolume,
   });
 
   final int mobileBytes;
@@ -191,189 +202,228 @@ class _Hero extends StatelessWidget {
 
   /// Temps d'écran de la période, s'il est connu.
   final Duration? screenTime;
+  final String name;
+  final int? perHour;
+  final int? planVolume;
 
   @override
   Widget build(BuildContext context) {
     final c = context.dw;
     final t = Theme.of(context).textTheme;
     final parts = sizeParts(mobileBytes);
+    final split = parts.value.split(',');
+    const soft = Color(0xFFC9CFD9);
+    final hourShare = perHour == null || planVolume == null || planVolume! <= 0
+        ? null
+        : perHour! / planVolume!;
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: c.hero,
-        borderRadius: BorderRadius.circular(DwRadius.xl),
+        borderRadius: BorderRadius.circular(DwRadius.lg + 4),
         border: Border.all(color: c.heroBorder),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'DONNÉES MOBILES',
-                  style: DwFonts.overline(c.heroTextSecondary),
-                ),
-              ),
-              if (change != null)
-                Semantics(
-                  label: variationSentence(change!),
-                  excludeSemantics: true,
-                  child: _DarkVariation(change: change!),
-                ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
-            children: [
-              Flexible(
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    parts.value,
-                    style: DwFonts.hero(60).copyWith(color: c.heroText),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 6),
-              Text(
-                parts.unit,
-                style: DwFonts.style(
-                  DwFonts.display,
-                  22,
-                  600,
-                ).copyWith(color: c.heroText),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Semantics(
-            label: '${formatShare(share)} de la consommation mobile',
-            excludeSemantics: true,
-            child: Row(
-              children: [
-                Expanded(
-                  flex: math.max(1, (share * 1000).round()),
-                  child: Container(
-                    height: 10,
-                    decoration: const BoxDecoration(
-                      color: DwColors.tankOk,
-                      borderRadius: BorderRadius.horizontal(
-                        left: Radius.circular(4),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 2),
-                Expanded(
-                  flex: math.max(1, ((1 - share) * 1000).round()),
-                  child: Container(
-                    height: 10,
-                    decoration: BoxDecoration(
-                      color: c.tankBorder,
-                      borderRadius: const BorderRadius.horizontal(
-                        right: Radius.circular(4),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text.rich(
-            TextSpan(
-              children: [
-                TextSpan(
-                  text: formatShare(share),
-                  style: TextStyle(color: c.heroText).weight(600),
-                ),
-                TextSpan(
-                  text: isTop
-                      ? ' de vos données mobiles : c’est votre application la plus gourmande.'
-                      : ' de vos données mobiles sur la période.',
-                ),
-              ],
-            ),
-            style: t.bodyMedium!.copyWith(color: const Color(0xFFC9CFD9)),
-          ),
-          const SizedBox(height: 14),
-          Container(height: 1, color: const Color(0x1AFFFFFF)),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              Icon(
-                Icons.wifi_rounded,
-                size: 17,
-                color: const Color(0xFF8DA2FF),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Wi-Fi · hors forfait',
-                  style: t.bodyMedium!.copyWith(color: const Color(0xFFC9CFD9)),
-                ),
-              ),
-              Text(
-                formatBytes(wifiBytes),
-                style: t.titleSmall!.copyWith(color: c.heroText),
-              ),
-            ],
-          ),
-          if (screenTime != null) ...[
-            const SizedBox(height: 10),
+      child: DefaultTextStyle.merge(
+        style: TextStyle(color: c.heroText),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
             Row(
               children: [
-                const Icon(
-                  Icons.hourglass_bottom_rounded,
-                  size: 17,
-                  color: DwColors.tankOk,
-                ),
-                const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Temps d’écran',
-                    style: t.bodyMedium!.copyWith(
-                      color: const Color(0xFFC9CFD9),
-                    ),
+                    'Données mobiles',
+                    style: DwFonts.label(c.heroTextSecondary),
                   ),
                 ),
-                Text(
-                  formatScreenTime(screenTime!),
-                  style: t.titleSmall!.copyWith(color: c.heroText),
-                ),
+                if (change != null)
+                  Semantics(
+                    label: variationSentence(change!),
+                    excludeSemantics: true,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        DwVariation(variation: change!, large: true, onDark: true),
+                        Text(
+                          ' vs précédent',
+                          style: t.bodySmall!.copyWith(
+                            color: c.heroTextSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
               ],
             ),
+            const SizedBox(height: 8),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text.rich(
+                TextSpan(
+                  children: [
+                    TextSpan(text: split[0], style: DwFonts.hero(72)),
+                    if (split.length > 1) ...[
+                      TextSpan(
+                        text: ',',
+                        style: DwFonts.hero(72).copyWith(color: c.accent),
+                      ),
+                      TextSpan(text: split[1], style: DwFonts.hero(72)),
+                    ],
+                    TextSpan(
+                      text: '$nbsp${parts.unit}',
+                      style: DwFonts.style(
+                        DwFonts.display,
+                        24,
+                        500,
+                      ).copyWith(color: soft),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+            Semantics(
+              label: '${formatShare(share)} de la consommation mobile',
+              excludeSemantics: true,
+              child: DwBar(
+                fraction: share,
+                color: c.accent,
+                track: c.tankBorder,
+                height: 10,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text.rich(
+              TextSpan(
+                children: [
+                  TextSpan(
+                    text: formatShare(share),
+                    style: TextStyle(color: c.heroText).weight(600),
+                  ),
+                  TextSpan(
+                    text: isTop
+                        ? ' de vos données mobiles : votre application la plus gourmande.'
+                        : ' de vos données mobiles sur la période.',
+                  ),
+                ],
+              ),
+              style: t.bodyMedium!.copyWith(color: soft),
+            ),
+            const SizedBox(height: 8),
+            _HeroRow(
+              label: 'Wi-Fi · hors forfait',
+              swatch: const Color(0xFF8DA2FF),
+              value: formatBytes(wifiBytes),
+            ),
+            if (screenTime != null)
+              _HeroRow(
+                label: 'Temps d’écran',
+                value: formatScreenTime(screenTime!),
+              ),
+            if (perHour != null) ...[
+              Container(
+                margin: const EdgeInsets.only(top: 4),
+                padding: const EdgeInsets.only(top: 12),
+                decoration: const BoxDecoration(
+                  border: Border(top: BorderSide(color: Color(0x1AFFFFFF))),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Padding(
+                      padding: EdgeInsets.only(top: 8),
+                      child: DwDash(),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text.rich(
+                        TextSpan(
+                          children: [
+                            TextSpan(text: 'Une heure de $name ≈ '),
+                            TextSpan(
+                              text: formatBytes(perHour!),
+                              style: TextStyle(color: c.heroText).weight(600),
+                            ),
+                            if (hourShare != null) ...[
+                              const TextSpan(text: ', soit '),
+                              TextSpan(
+                                text: formatShare(hourShare),
+                                style: TextStyle(
+                                  color: c.heroText,
+                                ).weight(600),
+                              ),
+                              const TextSpan(text: ' de votre forfait.'),
+                            ] else
+                              const TextSpan(
+                                text: ' en moyenne, mobile et Wi-Fi compris.',
+                              ),
+                          ],
+                        ),
+                        style: t.bodyMedium!.copyWith(color: soft),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
 }
 
-class _DarkVariation extends StatelessWidget {
-  const _DarkVariation({required this.change});
-  final double change;
+class _HeroRow extends StatelessWidget {
+  const _HeroRow({required this.label, required this.value, this.swatch});
+
+  final String label;
+  final String value;
+  final Color? swatch;
 
   @override
   Widget build(BuildContext context) {
-    final up = change > 0;
+    final c = context.dw;
+    final t = Theme.of(context).textTheme;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: up ? const Color(0x29FF9F5A) : const Color(0x24C6F135),
-        borderRadius: BorderRadius.circular(DwRadius.pill),
+      height: 44,
+      decoration: const BoxDecoration(
+        border: Border(top: BorderSide(color: Color(0x1AFFFFFF))),
       ),
-      child: Text(
-        '${formatVariation(change)} vs avant',
-        style: DwFonts.style(
-          DwFonts.body,
-          12.5,
-          600,
-        ).copyWith(color: up ? const Color(0xFFFFB27A) : DwColors.tankOk),
+      child: Row(
+        children: [
+          if (swatch != null) ...[
+            Container(
+              width: 10,
+              height: 10,
+              decoration: BoxDecoration(
+                color: swatch,
+                borderRadius: BorderRadius.circular(3),
+              ),
+            ),
+            const SizedBox(width: 8),
+          ],
+          Expanded(
+            child: Text(
+              label,
+              style: t.bodyMedium!.copyWith(
+                fontSize: 14,
+                color: const Color(0xFFC9CFD9),
+              ),
+            ),
+          ),
+          Text(
+            value,
+            style: DwFonts.style(
+              DwFonts.display,
+              19,
+              700,
+              letterSpacing: -0.4,
+              tabular: true,
+            ).copyWith(color: c.heroText),
+          ),
+        ],
       ),
     );
   }
@@ -445,9 +495,10 @@ class _WeekChartState extends State<_WeekChart> {
                       child: Text(
                         formatBytes((step * k).round()),
                         style: DwFonts.style(
-                          DwFonts.mono,
+                          DwFonts.body,
                           10.5,
-                          400,
+                          500,
+                          tabular: true,
                         ).copyWith(color: c.textSecondary),
                       ),
                     ),
@@ -493,24 +544,21 @@ class _WeekChartState extends State<_WeekChart> {
       );
     }
 
-    return DwCard(
+    return DwSheet(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text('Données mobiles, 7 jours', style: t.titleMedium),
-              ),
-              if (values == null && !widget.failed)
-                const SizedBox(
-                  width: 14,
-                  height: 14,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-            ],
+          DwSectionTitle(
+            '7 derniers jours',
+            size: 20,
+            trailing: values == null && !widget.failed
+                ? const DwLoader(size: 18)
+                : Text(
+                    'données mobiles',
+                    style: t.bodySmall!.copyWith(color: c.textSecondary),
+                  ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 8),
           body,
           Row(
             children: [
@@ -595,7 +643,7 @@ class _Bar extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                 decoration: BoxDecoration(
                   color: c.strong,
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(DwRadius.xs),
                 ),
                 child: FittedBox(
                   fit: BoxFit.scaleDown,
@@ -605,21 +653,27 @@ class _Bar extends StatelessWidget {
                       DwFonts.body,
                       11.5,
                       600,
+                      tabular: true,
                     ).copyWith(color: c.onStrong),
                   ),
                 ),
               ),
-            Container(
-              width: 20,
-              height: loading ? 8 : math.max(height, 2),
-              decoration: BoxDecoration(
-                color: loading
-                    ? c.track
-                    : partial
-                    ? c.strong.withValues(alpha: 0.35)
-                    : c.strong,
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(4),
+            TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0, end: loading ? 8 : math.max(height, 2)),
+              duration: const Duration(milliseconds: 700),
+              curve: Curves.easeOutCubic,
+              builder: (context, h, _) => Container(
+                width: 22,
+                height: h,
+                decoration: BoxDecoration(
+                  color: loading
+                      ? c.track
+                      : partial
+                      ? c.strong.withValues(alpha: 0.35)
+                      : c.strong,
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(6),
+                  ),
                 ),
               ),
             ),
@@ -655,30 +709,14 @@ class _AdviceRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.dw;
     final t = Theme.of(context).textTheme;
-    final (icon, bg, fg) = switch (advice.icon) {
-      AdviceIcon.video => (
-        Icons.play_circle_outline_rounded,
-        c.warningSoft,
-        c.warningText,
-      ),
-      AdviceIcon.audio => (
-        Icons.headphones_rounded,
-        c.warningSoft,
-        c.warningText,
-      ),
-      AdviceIcon.download => (Icons.download_rounded, c.wifiSoft, c.wifi),
-      AdviceIcon.message => (
-        Icons.chat_bubble_outline_rounded,
-        c.positiveSoft,
-        c.positiveText,
-      ),
-      AdviceIcon.browser => (Icons.public_rounded, c.wifiSoft, c.wifi),
-      AdviceIcon.wifi => (Icons.wifi_rounded, c.wifiSoft, c.wifi),
-      AdviceIcon.background => (
-        Icons.smartphone_rounded,
-        c.track,
-        c.textSecondary,
-      ),
+    final icon = switch (advice.icon) {
+      AdviceIcon.video => Icons.play_circle_outline,
+      AdviceIcon.audio => Icons.headphones_outlined,
+      AdviceIcon.download => Icons.download_outlined,
+      AdviceIcon.message => Icons.chat_bubble_outline,
+      AdviceIcon.browser => Icons.public,
+      AdviceIcon.wifi => Icons.wifi,
+      AdviceIcon.background => Icons.smartphone,
     };
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 14),
@@ -688,14 +726,9 @@ class _AdviceRow extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: bg,
-              borderRadius: BorderRadius.circular(DwRadius.md),
-            ),
-            child: Icon(icon, size: 20, color: fg),
+          Padding(
+            padding: const EdgeInsets.only(top: 1),
+            child: Icon(icon, size: 22, color: c.text),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -706,83 +739,6 @@ class _AdviceRow extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   advice.body,
-                  style: t.bodyMedium!.copyWith(color: c.textSecondary),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Ce que coûte une heure dans l'application : toutes ses données (mobile et
-/// Wi-Fi) divisées par son temps d'écran sur la période.
-class _HourCost extends StatelessWidget {
-  const _HourCost({
-    required this.name,
-    required this.perHour,
-    required this.planVolume,
-  });
-
-  final String name;
-  final int perHour;
-  final int? planVolume;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.dw;
-    final t = Theme.of(context).textTheme;
-    final parts = sizeParts(perHour);
-    final share = planVolume == null || planVolume! <= 0
-        ? null
-        : perHour / planVolume!;
-    return DwCard(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: c.positiveSoft,
-              borderRadius: BorderRadius.circular(DwRadius.md),
-            ),
-            child: Icon(Icons.timer_outlined, size: 22, color: c.positiveText),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                DwOverline('Une heure de $name'),
-                const SizedBox(height: 6),
-                Text.rich(
-                  TextSpan(
-                    children: [
-                      TextSpan(
-                        text: '≈$nbsp${parts.value}',
-                        style: DwFonts.style(
-                          DwFonts.display,
-                          34,
-                          700,
-                          letterSpacing: -1,
-                          tabular: true,
-                        ),
-                      ),
-                      TextSpan(
-                        text: '$nbsp${parts.unit}',
-                        style: DwFonts.style(DwFonts.display, 18, 600),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  share == null
-                      ? 'Données consommées en moyenne par heure d’utilisation.'
-                      : 'En données mobiles, une heure ≈ ${formatShare(share)} de votre forfait de ${formatBytes(planVolume!)}.',
                   style: t.bodyMedium!.copyWith(color: c.textSecondary),
                 ),
               ],

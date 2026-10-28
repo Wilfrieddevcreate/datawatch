@@ -13,6 +13,7 @@ import 'package:datawatch/core/units.dart';
 import 'package:datawatch/data/plan_store.dart';
 import 'package:datawatch/data/settings_store.dart';
 import 'package:datawatch/domain/data_plan.dart';
+import 'package:datawatch/ui/motion.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -41,7 +42,6 @@ Future<void> _loadFonts() async {
     rootBundle.load('assets/fonts/BricolageGrotesque.ttf'),
   );
   await load('Geist', rootBundle.load('assets/fonts/Geist.ttf'));
-  await load('GeistMono', rootBundle.load('assets/fonts/GeistMono.ttf'));
 
   final root = Platform.environment['FLUTTER_ROOT'];
   final icons = File(
@@ -104,6 +104,7 @@ Future<void> _shoot(
 }
 
 void main() {
+  DwMotion.enabled = false;
   setUpAll(_loadFonts);
 
   testWidgets('accueil sans forfait', (t) => _shoot(t, 'accueil_sans_forfait'));

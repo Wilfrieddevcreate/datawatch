@@ -6,7 +6,8 @@ import '../../domain/tips.dart';
 import '../theme/tokens.dart';
 import '../theme/typography.dart';
 import '../widgets/page_header.dart';
-import '../widgets/usage_row.dart';
+import '../widgets/primitives.dart';
+import '../widgets/text_tabs.dart';
 
 class TipsScreen extends StatefulWidget {
   const TipsScreen({super.key, required this.actions});
@@ -23,6 +24,7 @@ class _TipsScreenState extends State<TipsScreen> {
   @override
   Widget build(BuildContext context) {
     final controller = AppScope.of(context);
+    final c = context.dw;
     final snapshot = controller.snapshot;
     final apps = snapshot?.mobileApps;
     final focus = apps == null ? null : focusFor(apps);
@@ -41,53 +43,61 @@ class _TipsScreenState extends State<TipsScreen> {
 
     return DwPage(
       title: 'Conseils',
-      overline: 'Selon votre consommation',
-      subtitle: const Text(
-        'Des gestes simples pour faire durer votre forfait.',
-      ),
+      subtitle: const Text('Choisis d’après votre consommation mesurée.'),
       actions: widget.actions,
       children: [
         if (focus != null) ...[
-          _FocusCard(
-            focus: focus,
-            hourLine: hourLine,
-            onShow: () => setState(() => _filter = focus.category),
+          DwReveal(
+            child: _FocusSheet(
+              focus: focus,
+              hourLine: hourLine,
+              onShow: () => setState(() => _filter = focus.category),
+            ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 18),
         ],
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          clipBehavior: Clip.none,
-          child: Row(
-            children: [
-              _FilterChip(
-                label: 'Tous',
-                selected: _filter == null,
-                onTap: () => setState(() => _filter = null),
-              ),
-              for (final cat in TipCategory.values) ...[
-                const SizedBox(width: 8),
-                _FilterChip(
-                  label: cat.label,
-                  selected: _filter == cat,
-                  onTap: () => setState(() => _filter = cat),
-                ),
-              ],
-            ],
+        DwReveal(
+          delay: 1,
+          child: DwChoiceWords<TipCategory?>(
+            values: [null, ...TipCategory.values],
+            selected: _filter,
+            scroll: true,
+            height: 44,
+            spacing: 22,
+            labelOf: (cat) => cat?.label ?? 'Tous',
+            onChanged: (cat) => setState(() => _filter = cat),
           ),
         ),
         const SizedBox(height: 16),
-        for (final tip in tips) ...[
-          _TipCard(tip: tip),
-          const SizedBox(height: 10),
-        ],
+        DwReveal(
+          delay: 2,
+          child: DwSheet(
+            padding: const EdgeInsets.fromLTRB(16, 2, 16, 2),
+            child: Column(
+              children: [
+                for (final (i, tip) in tips.indexed)
+                  _TipRow(tip: tip, divider: i > 0),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: Text(
+            'Les conseils sont choisis d’après vos applications les plus gourmandes. DataWatch ne modifie jamais les réglages d’une autre application.',
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall!.copyWith(color: c.textSecondary),
+          ),
+        ),
       ],
     );
   }
 }
 
-class _FocusCard extends StatelessWidget {
-  const _FocusCard({
+class _FocusSheet extends StatelessWidget {
+  const _FocusSheet({
     required this.focus,
     required this.hourLine,
     required this.onShow,
@@ -99,192 +109,138 @@ class _FocusCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.dw;
     final t = Theme.of(context).textTheme;
     const ink = Color(0xFF0F1218);
-    return DwCard(
-      color: DwColors.tankOk,
-      radius: DwRadius.xl,
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const DwOverline('Votre plus gros poste', color: Color(0xFF34470A)),
-          const SizedBox(height: 10),
-          Text(
-            focus.headline,
-            style: DwFonts.style(
-              DwFonts.display,
-              27,
-              700,
-              height: 1.08,
-              letterSpacing: -0.8,
-            ).copyWith(color: ink),
-          ),
-          const SizedBox(height: 14),
-          Semantics(
-            label: '${(focus.share * 100).round()} % des données mobiles',
-            excludeSemantics: true,
-            child: Row(
-              children: [
-                Expanded(
-                  flex: (focus.share * 1000).round().clamp(1, 1000),
-                  child: Container(
-                    height: 10,
-                    decoration: const BoxDecoration(
-                      color: ink,
-                      borderRadius: BorderRadius.horizontal(
-                        left: Radius.circular(4),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 2),
-                Expanded(
-                  flex: ((1 - focus.share) * 1000).round().clamp(1, 1000),
-                  child: Container(
-                    height: 10,
-                    decoration: const BoxDecoration(
-                      color: Color(0x240F1218),
-                      borderRadius: BorderRadius.horizontal(
-                        right: Radius.circular(4),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            focus.detail,
-            style: t.bodyMedium!.copyWith(color: const Color(0xFF26300A)),
-          ),
-          if (hourLine != null) ...[
-            const SizedBox(height: 12),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Padding(
-                  padding: EdgeInsets.only(top: 1),
-                  child: Icon(Icons.timer_outlined, size: 18, color: ink),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    hourLine!,
-                    style: t.bodyMedium!.weight(600).copyWith(color: ink),
-                  ),
-                ),
-              ],
-            ),
-          ],
-          const SizedBox(height: 14),
-          FilledButton.icon(
-            onPressed: onShow,
-            iconAlignment: IconAlignment.end,
-            style: FilledButton.styleFrom(
-              backgroundColor: ink,
-              foregroundColor: Colors.white,
-              minimumSize: const Size(44, 48),
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-            ),
-            icon: const Icon(
-              Icons.chevron_right_rounded,
-              color: DwColors.tankOk,
-            ),
-            label: Text(
-              focus.category == null
-                  ? 'Voir tous les conseils'
-                  : 'Voir les conseils ${focus.category!.label.toLowerCase()}',
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _FilterChip extends StatelessWidget {
-  const _FilterChip({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.dw;
-    return Semantics(
-      button: true,
-      selected: selected,
-      child: Material(
-        color: selected ? c.strong : c.surface,
-        shape: StadiumBorder(
-          side: BorderSide(color: selected ? c.strong : c.divider),
-        ),
-        child: InkWell(
-          onTap: onTap,
-          customBorder: const StadiumBorder(),
-          child: Container(
-            height: 44,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            alignment: Alignment.center,
-            child: Text(
-              label,
-              style: Theme.of(context).textTheme.titleSmall!.copyWith(
-                color: selected ? c.onStrong : c.text,
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(DwRadius.lg + 4),
+      child: Container(
+        color: c.accent,
+        child: Stack(
+          children: [
+            Positioned(
+              right: -36,
+              top: -36,
+              child: CustomPaint(
+                size: const Size(160, 160),
+                painter: _HatchDisc(),
               ),
             ),
-          ),
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Votre plus gros poste',
+                    style: DwFonts.label(const Color(0xFF34470A)),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    focus.headline,
+                    style: DwFonts.title(30).copyWith(color: ink),
+                  ),
+                  const SizedBox(height: 14),
+                  Semantics(
+                    label: '${(focus.share * 100).round()} % des données mobiles',
+                    excludeSemantics: true,
+                    child: DwBar(
+                      fraction: focus.share,
+                      color: ink,
+                      track: const Color(0x240F1218),
+                      height: 10,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    hourLine == null
+                        ? focus.detail
+                        : '${focus.detail} $hourLine',
+                    style: t.bodyMedium!.copyWith(color: const Color(0xFF26300A)),
+                  ),
+                  const SizedBox(height: 16),
+                  FilledButton(
+                    onPressed: onShow,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: ink,
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size(44, 48),
+                      padding: const EdgeInsets.fromLTRB(20, 0, 16, 0),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          focus.category == null
+                              ? 'Voir tous les conseils'
+                              : 'Voir les conseils ${focus.category!.label.toLowerCase()}',
+                        ),
+                        const SizedBox(width: 8),
+                        Icon(Icons.arrow_forward, size: 18, color: c.accent),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
-class _TipCard extends StatelessWidget {
-  const _TipCard({required this.tip});
+/// Le disque hachuré de la carte lime.
+class _HatchDisc extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
+    canvas.save();
+    canvas.clipPath(Path()..addOval(rect));
+    final paint = Paint()
+      ..color = const Color(0x140F1218)
+      ..strokeWidth = 2;
+    for (var x = -size.height; x < size.width + size.height; x += 9) {
+      canvas.drawLine(
+        Offset(x, size.height),
+        Offset(x + size.height, 0),
+        paint,
+      );
+    }
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(_HatchDisc old) => false;
+}
+
+class _TipRow extends StatelessWidget {
+  const _TipRow({required this.tip, required this.divider});
+
   final Tip tip;
+  final bool divider;
 
   @override
   Widget build(BuildContext context) {
     final c = context.dw;
     final t = Theme.of(context).textTheme;
-    final (icon, bg, fg) = switch (tip.category) {
-      TipCategory.video => (
-        Icons.play_circle_outline_rounded,
-        c.warningSoft,
-        c.warningText,
-      ),
-      TipCategory.messaging => (
-        Icons.chat_bubble_outline_rounded,
-        c.positiveSoft,
-        c.positiveText,
-      ),
-      TipCategory.updates => (Icons.download_rounded, c.wifiSoft, c.wifi),
-      TipCategory.background => (
-        Icons.smartphone_rounded,
-        c.track,
-        c.textSecondary,
-      ),
+    final icon = switch (tip.category) {
+      TipCategory.video => Icons.play_circle_outline,
+      TipCategory.messaging => Icons.chat_bubble_outline,
+      TipCategory.updates => Icons.download_outlined,
+      TipCategory.background => Icons.smartphone,
     };
-    return DwCard(
-      radius: DwRadius.lg,
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      decoration: BoxDecoration(
+        border: divider ? Border(top: BorderSide(color: c.divider)) : null,
+      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: bg,
-              borderRadius: BorderRadius.circular(DwRadius.md),
-            ),
-            child: Icon(icon, size: 20, color: fg),
+          Padding(
+            padding: const EdgeInsets.only(top: 1),
+            child: Icon(icon, size: 22, color: c.text),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -297,26 +253,21 @@ class _TipCard extends StatelessWidget {
                   tip.body,
                   style: t.bodyMedium!.copyWith(color: c.textSecondary),
                 ),
-                const SizedBox(height: 10),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: tip.highImpact ? c.strong : c.track,
-                    borderRadius: BorderRadius.circular(DwRadius.pill),
-                  ),
-                  child: Text(
-                    tip.highImpact ? 'Impact élevé' : 'Impact moyen',
-                    style: DwFonts.style(DwFonts.body, 12, 600).copyWith(
-                      color: tip.highImpact
-                          ? (Theme.of(context).brightness == Brightness.light
-                                ? c.accent
-                                : c.onStrong)
-                          : c.textSecondary,
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    DwDash(
+                      width: 14,
+                      color: tip.highImpact ? c.accent : c.track,
                     ),
-                  ),
+                    const SizedBox(width: 8),
+                    Text(
+                      tip.highImpact ? 'Impact élevé' : 'Impact moyen',
+                      style: DwFonts.style(DwFonts.body, 12.5, 600).copyWith(
+                        color: tip.highImpact ? c.text : c.textSecondary,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),

@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
-/// Les trois familles embarquées sont des polices variables : le graisse doit
-/// être passée à l'axe `wght`, sinon Flutter affiche la graisse par défaut.
+/// Deux familles variables : Bricolage Grotesque (chiffres en vedette et
+/// titres, graisse 800 très serrée) et Geist (texte). La graisse doit être
+/// passée à l'axe `wght`, sinon Flutter affiche la graisse par défaut.
 abstract final class DwFonts {
   static const display = 'Bricolage';
   static const body = 'Geist';
-  static const mono = 'GeistMono';
 
   static TextStyle style(
     String family,
@@ -36,19 +36,27 @@ abstract final class DwFonts {
         FontWeight.values.length - 1,
       )];
 
-  /// Gros chiffre de la carte forfait.
+  /// Chiffre en vedette : « 1,38 ».
   static TextStyle hero(double size) => style(
     display,
     size,
-    700,
-    height: 0.92,
-    letterSpacing: -0.045 * size,
+    800,
+    height: 0.88,
+    letterSpacing: -0.05 * size,
     tabular: true,
   );
 
-  /// Libellé technique en capitales : « RESTANT ESTIMÉ ».
-  static TextStyle overline(Color color) =>
-      style(mono, 11.5, 500, letterSpacing: 0.9).copyWith(color: color);
+  /// Titre d'écran ou d'encadré.
+  static TextStyle title(double size) =>
+      style(display, size, 800, height: 1.0, letterSpacing: -0.045 * size);
+
+  /// Titre de section, posé après le tiret lime.
+  static TextStyle section(double size) =>
+      style(display, size, 700, height: 1.1, letterSpacing: -0.025 * size);
+
+  /// Petit libellé en minuscules : « Restant estimé ».
+  static TextStyle label(Color color) =>
+      style(body, 13, 600).copyWith(color: color);
 }
 
 extension DwTextStyle on TextStyle {
@@ -64,37 +72,19 @@ extension DwTextStyle on TextStyle {
 
 TextTheme dwTextTheme(Color text) {
   final t = TextTheme(
-    displayLarge: DwFonts.hero(72),
-    displayMedium: DwFonts.hero(60),
-    headlineMedium: DwFonts.style(
-      DwFonts.display,
-      32,
-      700,
-      height: 1.1,
-      letterSpacing: -1.1,
-    ),
-    headlineSmall: DwFonts.style(
-      DwFonts.display,
-      26,
-      700,
-      height: 1.1,
-      letterSpacing: -0.8,
-    ),
-    titleLarge: DwFonts.style(
-      DwFonts.display,
-      21,
-      650,
-      height: 1.2,
-      letterSpacing: -0.4,
-    ),
-    titleMedium: DwFonts.style(DwFonts.body, 15, 600, height: 1.3),
+    displayLarge: DwFonts.hero(92),
+    displayMedium: DwFonts.hero(72),
+    headlineMedium: DwFonts.title(36),
+    headlineSmall: DwFonts.title(30),
+    titleLarge: DwFonts.section(22),
+    titleMedium: DwFonts.style(DwFonts.body, 15.5, 600, height: 1.3),
     titleSmall: DwFonts.style(DwFonts.body, 14, 600, height: 1.3),
     bodyLarge: DwFonts.style(DwFonts.body, 15, 400, height: 1.45),
-    bodyMedium: DwFonts.style(DwFonts.body, 13.5, 400, height: 1.4),
+    bodyMedium: DwFonts.style(DwFonts.body, 13.5, 400, height: 1.42),
     bodySmall: DwFonts.style(DwFonts.body, 12.5, 400, height: 1.4),
     labelLarge: DwFonts.style(DwFonts.body, 15, 600),
     labelMedium: DwFonts.style(DwFonts.body, 12, 500),
-    labelSmall: DwFonts.style(DwFonts.mono, 11.5, 500, letterSpacing: 0.9),
+    labelSmall: DwFonts.style(DwFonts.body, 13, 600),
   );
   return t.apply(bodyColor: text, displayColor: text);
 }

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Couleurs de la direction « Réservoir » (voir la planche Fondations).
+/// Couleurs de la direction « Réservoir, en grand » (voir le canevas).
 @immutable
 class DwColors extends ThemeExtension<DwColors> {
   const DwColors({
@@ -140,11 +140,11 @@ extension DwThemeContext on BuildContext {
   DwColors get dw => Theme.of(this).extension<DwColors>()!;
 }
 
+/// Angles : 6, 10, 14, 20, 28. Jamais de pilule.
 abstract final class DwRadius {
   static const double xs = 6;
   static const double sm = 10;
   static const double md = 14;
-  static const double lg = 22;
+  static const double lg = 20;
   static const double xl = 28;
-  static const double pill = 999;
 }

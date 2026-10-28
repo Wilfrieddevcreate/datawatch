@@ -7,7 +7,8 @@ import '../period_text.dart';
 import '../theme/tokens.dart';
 import '../theme/typography.dart';
 import '../widgets/page_header.dart';
-import '../widgets/segmented.dart';
+import '../widgets/primitives.dart';
+import '../widgets/text_tabs.dart';
 import '../widgets/usage_row.dart';
 import 'app_detail_screen.dart';
 
@@ -60,30 +61,29 @@ class _AppsScreenState extends State<AppsScreen> {
     final max = apps == null || apps.isEmpty
         ? 1
         : apps.map((a) => a.bytes).reduce((a, b) => a > b ? a : b);
-    final barColor = _network == NetworkKind.mobile ? c.strong : c.wifi;
+    final mobile = _network == NetworkKind.mobile;
+    final accent = mobile ? c.accent : c.wifi;
     final appCount = apps?.where((a) => a.owner == UsageOwner.app).length ?? 0;
+    final totalParts = apps == null ? null : sizeParts(total);
+    final totalSplit = totalParts?.value.split(',');
 
     return DwPage(
       title: 'Applications',
-      overline: 'Période · ${controller.effectivePeriod.label}',
       subtitle: snapshot == null
           ? null
           : Text(periodCaption(snapshot.period, snapshot.range)),
       actions: widget.actions,
       onRefresh: controller.refresh,
       children: [
-        DwSegmented<NetworkKind>(
+        DwTextTabs<NetworkKind>(
           values: NetworkKind.values,
           selected: _network,
           fontSize: 14,
+          underlineColor: accent,
           labelOf: (n) => n == NetworkKind.mobile ? 'Données mobiles' : 'Wi-Fi',
-          iconOf: (n) => n == NetworkKind.mobile
-              ? Icons.signal_cellular_alt_rounded
-              : Icons.wifi_rounded,
-          selectedColorOf: (n) => n == NetworkKind.mobile ? c.strong : c.wifi,
           onChanged: (n) => setState(() => _network = n),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 18),
         Row(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
@@ -91,18 +91,44 @@ class _AppsScreenState extends State<AppsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    apps == null ? '…' : formatBytes(total),
-                    style: DwFonts.style(
-                      DwFonts.display,
-                      36,
-                      700,
-                      height: 1,
-                      letterSpacing: -1.4,
-                      tabular: true,
+                  if (totalParts == null || totalSplit == null)
+                    Text('…', style: DwFonts.hero(48))
+                  else
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text.rich(
+                        TextSpan(
+                          children: [
+                            TextSpan(
+                              text: totalSplit[0],
+                              style: DwFonts.hero(48),
+                            ),
+                            if (totalSplit.length > 1) ...[
+                              TextSpan(
+                                text: ',',
+                                style: DwFonts.hero(
+                                  48,
+                                ).copyWith(color: accent),
+                              ),
+                              TextSpan(
+                                text: totalSplit[1],
+                                style: DwFonts.hero(48),
+                              ),
+                            ],
+                            TextSpan(
+                              text: '$nbsp${totalParts.unit}',
+                              style: DwFonts.style(
+                                DwFonts.display,
+                                22,
+                                500,
+                              ).copyWith(color: c.textSecondary),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 6),
                   Text(
                     'mesurés sur $appCount application${appCount > 1 ? 's' : ''}',
                     style: t.bodySmall!.copyWith(color: c.textSecondary),
@@ -110,7 +136,7 @@ class _AppsScreenState extends State<AppsScreen> {
                 ],
               ),
             ),
-            OutlinedButton.icon(
+            TextButton(
               onPressed: () => setState(() {
                 var next = _sort.next;
                 // Sans temps d'écran, le coût par heure n'a pas de sens.
@@ -119,33 +145,34 @@ class _AppsScreenState extends State<AppsScreen> {
                 }
                 _sort = next;
               }),
-              style: OutlinedButton.styleFrom(
-                minimumSize: const Size(44, 44),
-                side: BorderSide(color: c.divider),
-                backgroundColor: c.surface,
-                padding: const EdgeInsets.symmetric(horizontal: 14),
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 6),
                 textStyle: t.titleSmall!.copyWith(fontSize: 13.5),
               ),
-              icon: const Icon(Icons.swap_vert_rounded, size: 18),
-              label: Text(_sort.label),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(_sort.label),
+                  const SizedBox(width: 4),
+                  const Icon(Icons.expand_more, size: 18),
+                ],
+              ),
             ),
           ],
         ),
-        const SizedBox(height: 12),
-        DwCard(
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+        const SizedBox(height: 14),
+        DwSheet(
+          padding: const EdgeInsets.fromLTRB(16, 2, 16, 2),
           child: apps == null
               ? const Padding(
                   padding: EdgeInsets.symmetric(vertical: 32),
-                  child: Center(
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
+                  child: Center(child: DwLoader()),
                 )
               : apps.isEmpty
               ? Padding(
                   padding: const EdgeInsets.symmetric(vertical: 20),
                   child: Text(
-                    _network == NetworkKind.mobile
+                    mobile
                         ? 'Aucune consommation mobile mesurée sur cette période.'
                         : 'Aucune consommation Wi-Fi mesurée sur cette période.',
                     style: t.bodyMedium!.copyWith(color: c.textSecondary),
@@ -159,8 +186,8 @@ class _AppsScreenState extends State<AppsScreen> {
                         source: controller.source,
                         share: total == 0 ? 0 : apps[i].bytes / total,
                         barFraction: apps[i].bytes / max,
-                        barColor: barColor,
-                        iconSize: 44,
+                        barColor: mobile ? c.strong : c.wifi,
+                        iconSize: 42,
                         height: 68,
                         showDivider: i > 0,
                         variation: snapshot?.variationOf(apps[i], _network),
@@ -176,26 +203,13 @@ class _AppsScreenState extends State<AppsScreen> {
                   ],
                 ),
         ),
-        const SizedBox(height: 16),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(top: 2),
-              child: Icon(
-                Icons.info_outline_rounded,
-                size: 16,
-                color: c.textSecondary,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                'Android regroupe le système et les applications désinstallées. Les applications sans icône dans le lanceur apparaissent sous « Autres services ».',
-                style: t.bodySmall!.copyWith(color: c.textSecondary),
-              ),
-            ),
-          ],
+        const SizedBox(height: 14),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: Text(
+            'Android regroupe le système et les applications désinstallées. Les applications sans icône dans le lanceur apparaissent sous « Autres services ».',
+            style: t.bodySmall!.copyWith(color: c.textSecondary),
+          ),
         ),
       ],
     );
